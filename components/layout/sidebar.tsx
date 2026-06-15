@@ -12,7 +12,7 @@ const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "Repository", href: "/dashboard/questions", icon: LibraryBig },
   { label: "Papers", href: "/dashboard/papers", icon: FileText },
-  { label: "Templates", href: "/dashboard", icon: WandSparkles },
+  { label: "Templates", href: "/dashboard/templates", icon: WandSparkles },
   { label: "Uploads", href: "/dashboard", icon: Upload },
   { label: "Settings", href: "/dashboard", icon: Settings },
 ];

@@ -18,9 +18,9 @@ export function TopBar() {
             Import
           </Button>
           <Button asChild>
-            <Link href="/dashboard/papers">
+            <Link href="/dashboard/templates">
               <Plus className="size-4" aria-hidden="true" />
-              Paper
+              Template
             </Link>
           </Button>
         </div>

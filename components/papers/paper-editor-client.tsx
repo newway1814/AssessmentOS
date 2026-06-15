@@ -135,6 +135,7 @@ export function PaperEditorClient({
 
         <main className="space-y-5">
           <PaperMetadata paper={paper} totalMarks={validation.totalMarks} />
+          <TemplateApplicationNotice />
           <DocumentPreview
             paper={paper}
             showAnswerKeys={showAnswerKeys}
@@ -211,6 +212,29 @@ function PaperMetadata({
       <MetadataBadge label="Subject" value={paper.subjectName} />
       <MetadataBadge label="Total marks" value={String(totalMarks)} />
       <MetadataBadge label="Duration" value={`${paper.durationMinutes} min`} />
+    </section>
+  );
+}
+
+function TemplateApplicationNotice() {
+  return (
+    <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-sm font-semibold">Template application</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Template selection and paper rendering are represented in the
+            template engine. Full template application to papers is planned for
+            the next persistence-backed workflow.
+          </p>
+        </div>
+        <Link
+          href="/dashboard/templates"
+          className="text-sm font-medium text-foreground hover:underline"
+        >
+          View templates
+        </Link>
+      </div>
     </section>
   );
 }
