@@ -5,7 +5,9 @@ AssessmentOS is a spec-driven B2B SaaS project for school assessment operations.
 ## Core Rules
 
 - Define or update expected behavior in `/specs` before implementation changes.
-- Keep PRs small, focused, and reviewable. Do not start the next PR unless explicitly asked.
+- Work in small, logical commits.
+- Use branches only when useful.
+- Do not create pull requests unless explicitly requested.
 - Do not add random dependencies or broad refactors.
 - Preserve user work and keep changes scoped to the request.
 
@@ -26,6 +28,9 @@ AssessmentOS is a spec-driven B2B SaaS project for school assessment operations.
 - Imported content must be school-owned, teacher-created, licensed, open, public-domain, or verified partner content.
 - Preserve source and usage-rights metadata for every imported question.
 
-## Before PR
+## Before Finishing
 
-- Check `git status`, ensure no secrets, run lint/typecheck/tests once tooling exists, commit cleanly, push, and open the PR to `main`.
+- Check `git status` and ensure no secrets are committed.
+- Always run lint, typecheck, and tests when tooling exists.
+- Commit cleanly.
+- Always report changed files, commit hash, and commands run.
