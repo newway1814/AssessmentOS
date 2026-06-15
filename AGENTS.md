@@ -1,41 +1,31 @@
 # Agent Instructions
 
-AssessmentOS uses spec-driven development.
+AssessmentOS is a spec-driven B2B SaaS project for school assessment operations. Keep future work grounded in `/specs`.
 
-## Working Rules
+## Core Rules
 
 - Define or update expected behavior in `/specs` before implementation changes.
-- Keep PRs small, focused, and reviewable.
-- Do not start follow-up PRs unless explicitly asked.
-- Do not add random dependencies. Prefer established project choices once tooling exists.
-- Preserve user work and avoid broad refactors unrelated to the task.
+- Keep PRs small, focused, and reviewable. Do not start the next PR unless explicitly asked.
+- Do not add random dependencies or broad refactors.
+- Preserve user work and keep changes scoped to the request.
 
-## TypeScript
+## Engineering Standards
 
-- Use strict TypeScript.
-- Avoid unnecessary `any`.
-- Use Zod at external boundaries.
-- Prefer clear domain types over clever generic types.
-- Use discriminated unions and exhaustive checks for important state machines.
-- Keep service interfaces typed.
+- Use strict TypeScript, clear domain types, Zod at boundaries, and discriminated unions for important workflow states.
+- Keep AI, storage, template extraction, export/rendering, validation, and audit logging behind typed service interfaces.
 - Do not hardcode AI provider logic in UI components.
 
-## UI
+## UI Standards
 
-- Follow a professional B2B SaaS standard inspired by Linear, Vercel, Notion, Airtable, and Stripe dashboard quality.
-- Preferred stack: Next.js App Router, Tailwind CSS, shadcn/ui, and Radix primitives.
-- Use dashboard layouts, sidebar navigation, data tables, right-side inspector panels, document-style editors, validation panels, and polished empty/loading/error states.
+- Use a serious B2B SaaS style: Next.js App Router, Tailwind CSS, shadcn/ui, Radix primitives, dashboard layout, data tables, inspector panels, document editor surfaces, and polished loading/empty/error states.
 - Avoid childish edtech visuals, random gradients, gimmicky animation, messy generated UI, and oversized marketing components inside the app.
 
 ## Content Rights
 
 - Do not design or implement random copyrighted web scraping.
 - Imported content must be school-owned, teacher-created, licensed, open, public-domain, or verified partner content.
-- Every imported question must preserve source and usage-rights metadata.
+- Preserve source and usage-rights metadata for every imported question.
 
 ## Before PR
 
-- Check `git status`.
-- Ensure no secrets are committed.
-- Run lint, typecheck, and tests once tooling exists.
-- Commit cleanly, push the branch, and open a PR to `main`.
+- Check `git status`, ensure no secrets, run lint/typecheck/tests once tooling exists, commit cleanly, push, and open the PR to `main`.

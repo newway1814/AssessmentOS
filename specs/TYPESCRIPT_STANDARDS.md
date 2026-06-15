@@ -14,20 +14,38 @@ AssessmentOS should follow strict, readable TypeScript discipline in the spirit 
 - Keep service interfaces typed.
 - Keep API request and response shapes explicit.
 - Do not hardcode AI provider logic in UI components.
+- Avoid non-null assertions unless the invariant is proven nearby.
+- Avoid type assertions as a shortcut around unclear data.
+- Prefer named domain types for shared concepts instead of repeating object literals across modules.
 
 ## Domain Types
 
 Domain types should reflect product language:
 
 - School
+- Campus
 - Workspace
+- User
+- Role
+- Subject
+- Grade
+- Chapter
+- Subtopic
 - Question
 - QuestionVersion
 - QuestionSource
+- Upload
+- MediaAsset
 - Paper
+- PaperSection
+- PaperQuestion
 - Template
+- TemplateVersion
+- Rubric
+- AnswerKey
 - ValidationResult
 - ApprovalRequest
+- Comment
 - AuditLog
 
 ## Boundary Validation
@@ -41,6 +59,8 @@ Use Zod for:
 - Webhook or integration payloads
 - Environment variables
 
+Boundary parsing should return typed application data or structured errors. Do not pass unparsed external data into domain services.
+
 ## State Modeling
 
 Prefer discriminated unions for workflows:
@@ -53,6 +73,14 @@ type ValidationStatus =
   | { state: "failed"; completedAt: string; issueCount: number };
 ```
 
+Use exhaustive checks for important unions:
+
+```ts
+function assertNever(value: never): never {
+  throw new Error(`Unhandled state: ${JSON.stringify(value)}`);
+}
+```
+
 ## Service Boundary Example
 
 ```ts
@@ -62,3 +90,18 @@ interface AiNormalizationService {
 ```
 
 UI components should call application services or actions, not provider SDKs directly.
+
+## Data Access
+
+- Database queries should preserve school/workspace scoping.
+- Repository functions should return domain-specific results, not raw provider responses when that leaks infrastructure details.
+- Audit-log writes should be explicit for important mutations.
+
+## Testing Expectations
+
+Once tooling exists, add focused tests for:
+
+- Zod boundary schemas
+- Validation rule behavior
+- Permission and workspace isolation checks
+- Important workflow state transitions
