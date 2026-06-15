@@ -18,9 +18,9 @@ export function TopBar() {
             Import
           </Button>
           <Button asChild>
-            <Link href="/dashboard/questions">
+            <Link href="/dashboard/papers">
               <Plus className="size-4" aria-hidden="true" />
-              Question
+              Paper
             </Link>
           </Button>
         </div>
