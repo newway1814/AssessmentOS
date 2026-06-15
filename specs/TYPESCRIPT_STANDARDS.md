@@ -85,7 +85,9 @@ function assertNever(value: never): never {
 
 ```ts
 interface AiNormalizationService {
-  normalizeQuestion(input: NormalizeQuestionInput): Promise<NormalizeQuestionResult>;
+  normalizeQuestion(
+    input: NormalizeQuestionInput,
+  ): Promise<NormalizeQuestionResult>;
 }
 ```
 

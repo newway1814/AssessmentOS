@@ -8,9 +8,7 @@ assignees: ""
 
 ## What happened?
 
-
 ## Expected behavior
-
 
 ## Affected area
 
@@ -28,4 +26,3 @@ assignees: ""
 1.
 
 ## Additional context
-

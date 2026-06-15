@@ -8,9 +8,7 @@ assignees: ""
 
 ## Problem
 
-
 ## Proposed behavior
-
 
 ## User role
 
@@ -26,4 +24,3 @@ assignees: ""
 - [ ] Unsure
 
 ## Spec impact
-

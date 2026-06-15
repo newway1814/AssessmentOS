@@ -1,6 +1,6 @@
 # Summary
 
-- 
+-
 
 # Spec Updates
 
@@ -15,4 +15,3 @@
 - [ ] Lint/typecheck/tests run once tooling exists
 
 # Notes
-
