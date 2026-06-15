@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Download,
   FileText,
   LayoutDashboard,
   LibraryBig,
@@ -13,6 +14,7 @@ const navItems = [
   { label: "Repository", href: "/dashboard/questions", icon: LibraryBig },
   { label: "Papers", href: "/dashboard/papers", icon: FileText },
   { label: "Templates", href: "/dashboard/templates", icon: WandSparkles },
+  { label: "Exports", href: "/dashboard/exports", icon: Download },
   { label: "Uploads", href: "/dashboard", icon: Upload },
   { label: "Settings", href: "/dashboard", icon: Settings },
 ];
