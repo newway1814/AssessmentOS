@@ -15,7 +15,7 @@ const navItems = [
   { label: "Papers", href: "/dashboard/papers", icon: FileText },
   { label: "Templates", href: "/dashboard/templates", icon: WandSparkles },
   { label: "Exports", href: "/dashboard/exports", icon: Download },
-  { label: "Uploads", href: "/dashboard", icon: Upload },
+  { label: "Imports", href: "/dashboard/imports", icon: Upload },
   { label: "Settings", href: "/dashboard", icon: Settings },
 ];
 

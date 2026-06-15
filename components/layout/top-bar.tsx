@@ -14,8 +14,8 @@ export function TopBar() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" disabled>
-            Import
+          <Button asChild variant="outline">
+            <Link href="/dashboard/imports">Import</Link>
           </Button>
           <Button asChild>
             <Link href="/dashboard/templates">
