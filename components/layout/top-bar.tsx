@@ -1,4 +1,5 @@
-import { Search } from "lucide-react";
+import Link from "next/link";
+import { Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -16,7 +17,12 @@ export function TopBar() {
           <Button variant="outline" disabled>
             Import
           </Button>
-          <Button disabled>New paper</Button>
+          <Button asChild>
+            <Link href="/dashboard/questions">
+              <Plus className="size-4" aria-hidden="true" />
+              Question
+            </Link>
+          </Button>
         </div>
       </div>
     </header>

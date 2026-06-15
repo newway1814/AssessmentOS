@@ -10,7 +10,7 @@ import {
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Repository", href: "/dashboard", icon: LibraryBig },
+  { label: "Repository", href: "/dashboard/questions", icon: LibraryBig },
   { label: "Papers", href: "/dashboard", icon: FileText },
   { label: "Templates", href: "/dashboard", icon: WandSparkles },
   { label: "Uploads", href: "/dashboard", icon: Upload },
