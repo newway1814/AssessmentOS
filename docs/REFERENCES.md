@@ -6,7 +6,7 @@ Allowed future references include:
 
 - shadcn/ui examples
 - Next.js examples
-- Prisma examples
+- Drizzle ORM examples and official docs
 - Auth.js examples
 - Open-source SaaS starter examples
 

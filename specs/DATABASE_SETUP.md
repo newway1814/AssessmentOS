@@ -6,14 +6,17 @@ This spec defines the sensible default database setup for AssessmentOS before th
 
 AssessmentOS is a multi-school B2B SaaS product. The database must make tenant isolation, question provenance, version history, reviewability, validation, and auditability first-class from the beginning without overbuilding enterprise sharing, billing, analytics, OCR, AI, or rendering.
 
+For the current product stage, use SQLite with Drizzle ORM. This keeps local development and CI simple while preserving a relational schema and typed query layer. If AssessmentOS later needs managed multi-tenant production scale, the schema should be reviewed for a PostgreSQL migration path.
+
 ## Decisions
 
 | Area                | Decision                                                                                                         |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Database            | PostgreSQL for local, staging, and production.                                                                   |
-| ORM                 | Prisma with generated client kept out of hand-authored domain types.                                             |
-| Migration policy    | Use Prisma migrations for schema history; avoid `db push` for shared environments.                               |
-| Local setup         | `DATABASE_URL` in `.env`; local Postgres may run through Docker, native Postgres, or managed dev DB.             |
+| Database            | SQLite for local, CI, and MVP persistence.                                                                       |
+| ORM                 | Drizzle ORM with schema defined in TypeScript.                                                                   |
+| Driver              | `better-sqlite3` for the current Next.js/server runtime.                                                         |
+| Migration policy    | Use Drizzle migrations for schema history; avoid untracked manual database edits.                                |
+| Local setup         | `DATABASE_URL` in `.env` points to a local SQLite file that is ignored by git.                                   |
 | Tenant boundary     | `School` is the top-level tenant; `Workspace` is the daily collaboration/data boundary.                          |
 | Campuses            | Optional in MVP; schema supports them but does not require campus assignment.                                    |
 | User membership     | Users may belong to multiple schools and workspaces through role assignments.                                    |
@@ -30,35 +33,38 @@ AssessmentOS is a multi-school B2B SaaS product. The database must make tenant i
 Required variables:
 
 ```env
-DATABASE_URL="postgresql://assessmentos:assessmentos@localhost:5432/assessmentos?schema=public"
+DATABASE_URL="./data/assessmentos.sqlite"
 ```
 
-Recommended local options:
+Recommended local setup:
 
-- Docker Postgres for repeatable local development.
-- Native Postgres for developers who already run it locally.
-- Managed development Postgres for hosted preview environments.
+- Keep SQLite files under `data/`.
+- Do not commit SQLite database files, WAL files, or local backups.
+- Use seed data for repeatable local development instead of sharing database files.
 
 Do not commit real database credentials. `.env.example` should show shape only.
 
-## Prisma Workflow
+## Drizzle Workflow
 
 Expected scripts:
 
 ```bash
 npm run db:generate
 npm run db:migrate
+npm run db:push
 npm run db:seed
 ```
 
-Current scripts may keep `db:push` for local prototyping, but migration-backed development should become the default before shared database work begins.
+`db:push` may be useful for local prototyping, but migration-backed development should become the default once schema changes are shared.
 
 Rules:
 
-- Run Prisma generation before typecheck in CI.
-- Keep generated Prisma types separate from hand-authored domain schemas.
+- Keep Drizzle schema in `db/schema.ts`.
+- Keep the runtime database client behind `lib/db/client.ts`.
+- Keep migration files in `drizzle/`.
+- Run Drizzle migration generation when schema changes.
 - Put repository/query helpers behind tenant-scoped data access functions.
-- Do not call Prisma directly from React components.
+- Do not call Drizzle directly from React components.
 - Seed one realistic demo school with roles, taxonomy, questions, templates, papers, import candidates, validation results, and audit logs.
 
 ## Tenant And Access Model
@@ -412,7 +418,7 @@ Future performance indexes should be based on real query patterns, especially re
 
 ## MVP Implementation Order
 
-1. Add migration-backed Prisma workflow and local Postgres setup notes.
+1. Add migration-backed Drizzle workflow and local SQLite setup notes.
 2. Add missing enums for imports and exports.
 3. Add `ImportBatch` and `ImportCandidate`.
 4. Require `PaperQuestion.questionVersionId` for new paper placements.
@@ -434,7 +440,7 @@ Future performance indexes should be based on real query patterns, especially re
 
 ## Acceptance Criteria For The Next Schema Pass
 
-- Prisma schema represents the entities and decisions in this spec.
+- Drizzle schema represents the entities and decisions in this spec.
 - `npm run db:generate` passes.
 - Migration files are created for schema changes.
 - Seed data covers one realistic school workspace and all MVP workflow surfaces.

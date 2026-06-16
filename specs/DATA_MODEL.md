@@ -2,7 +2,7 @@
 
 ## Database Direction
 
-Use PostgreSQL with Prisma as the primary persistence path. The detailed database setup, migration policy, tenant decisions, and next schema pass are defined in [`DATABASE_SETUP.md`](./DATABASE_SETUP.md).
+Use SQLite with Drizzle ORM as the primary MVP persistence path. The detailed database setup, migration policy, tenant decisions, and next schema pass are defined in [`DATABASE_SETUP.md`](./DATABASE_SETUP.md).
 
 The current implementation may use mock adapters for MVP UI workflows, but persistent data design should follow the database setup spec before real writes are introduced.
 

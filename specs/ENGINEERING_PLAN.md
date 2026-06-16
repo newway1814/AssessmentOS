@@ -46,7 +46,7 @@ Use [`DATABASE_SETUP.md`](./DATABASE_SETUP.md) as the operating spec for the nex
 
 The next schema pass should:
 
-- Move from prototype `db push` habits toward migration-backed Prisma development.
+- Move from prototype `db push` habits toward migration-backed Drizzle development.
 - Add import batch/candidate persistence before any real OCR or AI calls.
 - Add export request persistence before real PDF/DOCX rendering.
 - Require tenant-scoped repository helpers for school-owned data.

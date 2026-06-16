@@ -9,7 +9,7 @@ AssessmentOS should be built as modular B2B SaaS with explicit boundaries around
 - Frontend: Next.js App Router
 - UI: Tailwind CSS, shadcn/ui, Radix primitives
 - API/backend: typed API layer
-- Database: relational database with Prisma or equivalent typed ORM
+- Database: SQLite with Drizzle ORM for MVP persistence
 - Validation: Zod at boundaries and a domain validation engine
 - Auth: provider-agnostic authentication with role-based access control
 
@@ -33,7 +33,7 @@ Persistent school, workspace, user, content, paper, template, validation, approv
 
 The data layer must make tenant scoping difficult to forget. Prefer query helpers or repository methods that require school/workspace context for customer-owned records.
 
-PostgreSQL and Prisma are the default database stack. Schema details, migration policy, import candidate handling, export request persistence, and seed expectations are defined in [`DATABASE_SETUP.md`](./DATABASE_SETUP.md).
+SQLite and Drizzle ORM are the default MVP database stack. Schema details, migration policy, import candidate handling, export request persistence, and seed expectations are defined in [`DATABASE_SETUP.md`](./DATABASE_SETUP.md).
 
 ### AI Service Abstraction
 
