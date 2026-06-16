@@ -6,7 +6,11 @@ import { FileText, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { calculatePaperTotalMarks, validatePaper } from "@/lib/papers/helpers";
-import type { PaperBuilderItem, PaperCreateInput } from "@/lib/papers/types";
+import type {
+  PaperBuilderItem,
+  PaperBuilderMutations,
+  PaperCreateInput,
+} from "@/lib/papers/types";
 
 const emptyPaperInput: PaperCreateInput = {
   title: "",
@@ -18,44 +22,38 @@ const emptyPaperInput: PaperCreateInput = {
 };
 
 export function PaperListClient({
+  actions,
   initialPapers,
 }: {
+  actions: Pick<PaperBuilderMutations, "createPaper">;
   initialPapers: PaperBuilderItem[];
 }) {
   const [papers, setPapers] = useState(initialPapers);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formValues, setFormValues] = useState(emptyPaperInput);
   const [error, setError] = useState("");
 
-  function createPaper() {
+  async function createPaper() {
     if (!formValues.title.trim()) {
       setError("Paper title is required.");
       return;
     }
 
-    const nextPaper: PaperBuilderItem = {
-      id: `paper-${Date.now()}`,
-      schoolId: "school-riverside",
-      workspaceId: "workspace-academic-coordination",
-      ...formValues,
-      status: "DRAFT",
-      updatedAt: new Date().toISOString(),
-      sections: [
-        {
-          id: `section-${Date.now()}`,
-          title: "Section A",
-          instructions: "Answer all questions.",
-          order: 1,
-          expectedMarks: 0,
-          questions: [],
-        },
-      ],
-    };
-
-    setPapers((current) => [nextPaper, ...current]);
-    setFormValues(emptyPaperInput);
-    setIsCreating(false);
+    setIsSaving(true);
     setError("");
+
+    try {
+      const nextPaper = await actions.createPaper(formValues);
+
+      setPapers((current) => [nextPaper, ...current]);
+      setFormValues(emptyPaperInput);
+      setIsCreating(false);
+    } catch (createError) {
+      setError(errorMessage(createError));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -84,7 +82,7 @@ export function PaperListClient({
           <div className="border-b border-border px-5 py-4">
             <h2 className="text-sm font-semibold">Create paper</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              This creates a local draft backed by the mocked paper adapter.
+              This creates a persisted draft with an initial Section A.
             </p>
           </div>
           <div className="grid gap-4 p-5 md:grid-cols-3">
@@ -147,17 +145,24 @@ export function PaperListClient({
             <Button variant="outline" onClick={() => setIsCreating(false)}>
               Cancel
             </Button>
-            <Button onClick={createPaper}>Create draft</Button>
+            <Button onClick={() => void createPaper()} disabled={isSaving}>
+              {isSaving ? "Creating..." : "Create draft"}
+            </Button>
           </div>
         </section>
       ) : null}
 
       <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
         <div className="border-b border-border px-5 py-4">
-          <h2 className="text-sm font-semibold">Papers</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {papers.length} draft papers in this workspace
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Papers</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {papers.length} draft papers in this workspace
+              </p>
+            </div>
+            <StatusBadge label="Persisted SQLite" tone="success" />
+          </div>
         </div>
         {papers.length === 0 ? (
           <div className="px-5 py-16 text-center">
@@ -198,7 +203,7 @@ export function PaperListClient({
                           {paper.title}
                         </Link>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {paper.sections.length} sections ·{" "}
+                          {paper.sections.length} sections |{" "}
                           {paper.status.toLowerCase()}
                         </p>
                       </td>
@@ -274,3 +279,9 @@ function StatusBadge({
 
 const fieldClassName =
   "h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring";
+
+function errorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "The paper could not be saved. Please try again.";
+}

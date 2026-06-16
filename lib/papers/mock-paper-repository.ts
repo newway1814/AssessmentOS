@@ -1,4 +1,5 @@
 import { questionRepository } from "@/lib/questions/repository";
+import { moveQuestionInSection } from "@/lib/papers/helpers";
 import type {
   PaperBuilderAdapter,
   PaperBuilderItem,
@@ -47,6 +48,210 @@ export const mockPaperRepository: PaperBuilderAdapter = {
 
     papers = [nextPaper, ...(await getPapers())];
     return nextPaper;
+  },
+
+  async updatePaper(id, input) {
+    let updatedPaper: PaperBuilderItem | undefined;
+
+    papers = (await getPapers()).map((paper) => {
+      if (paper.id !== id) {
+        return paper;
+      }
+
+      updatedPaper = {
+        ...paper,
+        ...input,
+        updatedAt: new Date().toISOString(),
+      };
+
+      return updatedPaper;
+    });
+
+    if (!updatedPaper) {
+      throw new Error(`Paper ${id} was not found.`);
+    }
+
+    return updatedPaper;
+  },
+
+  async archivePaper(id) {
+    const paper = await this.getPaper(id);
+
+    if (!paper) {
+      throw new Error(`Paper ${id} was not found.`);
+    }
+
+    return this.updatePaper(id, {
+      title: paper.title,
+      gradeId: paper.gradeId,
+      gradeName: paper.gradeName,
+      subjectId: paper.subjectId,
+      subjectName: paper.subjectName,
+      durationMinutes: paper.durationMinutes,
+      totalMarksTarget: paper.totalMarksTarget,
+      templateVersionId: paper.templateVersionId,
+      status: "ARCHIVED",
+    });
+  },
+
+  async createSection(paperId, input) {
+    const paper = await this.getPaper(paperId);
+
+    if (!paper) {
+      throw new Error(`Paper ${paperId} was not found.`);
+    }
+
+    papers = (await getPapers()).map((item) =>
+      item.id === paperId
+        ? {
+            ...item,
+            sections: [
+              ...item.sections,
+              {
+                id: `section-${Date.now()}`,
+                title: input.title,
+                instructions: input.instructions,
+                expectedMarks: input.expectedMarks,
+                order: item.sections.length + 1,
+                questions: [],
+              },
+            ],
+            updatedAt: new Date().toISOString(),
+          }
+        : item,
+    );
+
+    return (await this.getPaper(paperId)) as PaperBuilderItem;
+  },
+
+  async updateSection(paperId, sectionId, input) {
+    const paper = await this.getPaper(paperId);
+
+    if (!paper) {
+      throw new Error(`Paper ${paperId} was not found.`);
+    }
+
+    papers = (await getPapers()).map((item) =>
+      item.id === paperId
+        ? {
+            ...item,
+            sections: item.sections.map((section) =>
+              section.id === sectionId
+                ? {
+                    ...section,
+                    title: input.title,
+                    instructions: input.instructions,
+                    expectedMarks: input.expectedMarks,
+                    order: input.order,
+                  }
+                : section,
+            ),
+            updatedAt: new Date().toISOString(),
+          }
+        : item,
+    );
+
+    return (await this.getPaper(paperId)) as PaperBuilderItem;
+  },
+
+  async addQuestionToSection(paperId, sectionId, questionId) {
+    const [paper, questions] = await Promise.all([
+      this.getPaper(paperId),
+      questionRepository.listQuestions(),
+    ]);
+    const question = questions.find((item) => item.id === questionId);
+
+    if (!paper || !question) {
+      throw new Error(
+        `Paper ${paperId} or question ${questionId} was not found.`,
+      );
+    }
+
+    papers = (await getPapers()).map((item) =>
+      item.id === paperId
+        ? {
+            ...item,
+            sections: item.sections.map((section) =>
+              section.id === sectionId
+                ? {
+                    ...section,
+                    questions: [
+                      ...section.questions,
+                      {
+                        id: `paper-question-${Date.now()}`,
+                        question,
+                        order: section.questions.length + 1,
+                        marks: question.marks,
+                      },
+                    ],
+                  }
+                : section,
+            ),
+            updatedAt: new Date().toISOString(),
+          }
+        : item,
+    );
+
+    return (await this.getPaper(paperId)) as PaperBuilderItem;
+  },
+
+  async removeQuestionFromSection(paperId, sectionId, paperQuestionId) {
+    papers = (await getPapers()).map((item) =>
+      item.id === paperId
+        ? {
+            ...item,
+            sections: item.sections.map((section) =>
+              section.id === sectionId
+                ? {
+                    ...section,
+                    questions: section.questions
+                      .filter((question) => question.id !== paperQuestionId)
+                      .map((question, index) => ({
+                        ...question,
+                        order: index + 1,
+                      })),
+                  }
+                : section,
+            ),
+            updatedAt: new Date().toISOString(),
+          }
+        : item,
+    );
+
+    return (await this.getPaper(paperId)) as PaperBuilderItem;
+  },
+
+  async moveQuestionInSection(paperId, sectionId, paperQuestionId, direction) {
+    const paper = await this.getPaper(paperId);
+
+    if (!paper) {
+      throw new Error(`Paper ${paperId} was not found.`);
+    }
+
+    const section = paper.sections.find((item) => item.id === sectionId);
+    if (!section) {
+      throw new Error(`Paper section ${sectionId} was not found.`);
+    }
+
+    const nextSection = moveQuestionInSection({
+      section,
+      paperQuestionId,
+      direction,
+    });
+
+    papers = (await getPapers()).map((item) =>
+      item.id === paperId
+        ? {
+            ...item,
+            sections: item.sections.map((currentSection) =>
+              currentSection.id === sectionId ? nextSection : currentSection,
+            ),
+            updatedAt: new Date().toISOString(),
+          }
+        : item,
+    );
+
+    return (await this.getPaper(paperId)) as PaperBuilderItem;
   },
 };
 

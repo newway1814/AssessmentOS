@@ -4,6 +4,18 @@ import { PaperEditorClient } from "@/components/papers/paper-editor-client";
 import { paperRepository } from "@/lib/papers/repository";
 import { questionRepository } from "@/lib/questions/repository";
 
+import {
+  addQuestionToPaperSectionAction,
+  archivePaperAction,
+  createPaperSectionAction,
+  moveQuestionInPaperSectionAction,
+  removeQuestionFromPaperSectionAction,
+  updatePaperAction,
+  updatePaperSectionAction,
+} from "../actions";
+
+export const dynamic = "force-dynamic";
+
 export default async function PaperEditorPage({
   params,
 }: {
@@ -20,6 +32,18 @@ export default async function PaperEditorPage({
   }
 
   return (
-    <PaperEditorClient initialPaper={paper} repositoryQuestions={questions} />
+    <PaperEditorClient
+      initialPaper={paper}
+      repositoryQuestions={questions}
+      actions={{
+        updatePaper: updatePaperAction,
+        archivePaper: archivePaperAction,
+        createSection: createPaperSectionAction,
+        updateSection: updatePaperSectionAction,
+        addQuestionToSection: addQuestionToPaperSectionAction,
+        removeQuestionFromSection: removeQuestionFromPaperSectionAction,
+        moveQuestionInSection: moveQuestionInPaperSectionAction,
+      }}
+    />
   );
 }

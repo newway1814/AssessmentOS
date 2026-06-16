@@ -6,6 +6,7 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  Archive,
   Eye,
   KeyRound,
   Plus,
@@ -14,84 +15,171 @@ import {
 
 import { Button } from "@/components/ui/button";
 import {
-  addQuestionToSection,
   calculatePaperTotalMarks,
   calculateSectionMarks,
-  moveQuestionInSection,
-  removeQuestionFromSection,
   validatePaper,
 } from "@/lib/papers/helpers";
 import type {
   PaperBuilderItem,
+  PaperBuilderMutations,
   PaperQuestionItem,
   PaperSectionItem,
+  PaperSectionUpdateInput,
+  PaperUpdateInput,
 } from "@/lib/papers/types";
 import type { QuestionRepositoryItem } from "@/lib/questions/types";
 
 export function PaperEditorClient({
+  actions,
   initialPaper,
   repositoryQuestions,
 }: {
+  actions: Omit<PaperBuilderMutations, "createPaper">;
   initialPaper: PaperBuilderItem;
   repositoryQuestions: QuestionRepositoryItem[];
 }) {
   const [paper, setPaper] = useState(initialPaper);
+  const [metadataDraft, setMetadataDraft] = useState<PaperUpdateInput>(
+    toPaperUpdateInput(initialPaper),
+  );
   const [selectedSectionId, setSelectedSectionId] = useState(
     initialPaper.sections[0]?.id ?? "",
   );
   const [showAnswerKeys, setShowAnswerKeys] = useState(true);
+  const [error, setError] = useState("");
+  const [isSavingPaper, setIsSavingPaper] = useState(false);
+  const [isAddingSection, setIsAddingSection] = useState(false);
   const validation = useMemo(() => validatePaper(paper), [paper]);
   const selectedSection =
     paper.sections.find((section) => section.id === selectedSectionId) ??
     paper.sections[0];
 
-  function updateSection(sectionId: string, nextSection: PaperSectionItem) {
-    setPaper((current) => ({
-      ...current,
-      sections: current.sections.map((section) =>
-        section.id === sectionId ? nextSection : section,
-      ),
-      updatedAt: new Date().toISOString(),
-    }));
+  function replacePaper(nextPaper: PaperBuilderItem) {
+    setPaper(nextPaper);
+    setMetadataDraft(toPaperUpdateInput(nextPaper));
+
+    if (
+      !nextPaper.sections.some((section) => section.id === selectedSectionId)
+    ) {
+      setSelectedSectionId(nextPaper.sections[0]?.id ?? "");
+    }
   }
 
-  function addQuestion(question: QuestionRepositoryItem) {
+  async function savePaperMetadata() {
+    setIsSavingPaper(true);
+    setError("");
+
+    try {
+      replacePaper(await actions.updatePaper(paper.id, metadataDraft));
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setIsSavingPaper(false);
+    }
+  }
+
+  async function archivePaper() {
+    setIsSavingPaper(true);
+    setError("");
+
+    try {
+      replacePaper(await actions.archivePaper(paper.id));
+    } catch (archiveError) {
+      setError(errorMessage(archiveError));
+    } finally {
+      setIsSavingPaper(false);
+    }
+  }
+
+  async function createSection() {
+    setIsAddingSection(true);
+    setError("");
+
+    try {
+      const nextPaper = await actions.createSection(paper.id, {
+        title: `Section ${String.fromCharCode(65 + paper.sections.length)}`,
+        instructions: "Add section instructions.",
+        expectedMarks: 0,
+      });
+      const nextSection = nextPaper.sections.at(-1);
+
+      replacePaper(nextPaper);
+      setSelectedSectionId(nextSection?.id ?? "");
+    } catch (sectionError) {
+      setError(errorMessage(sectionError));
+    } finally {
+      setIsAddingSection(false);
+    }
+  }
+
+  async function saveSection(
+    sectionId: string,
+    input: PaperSectionUpdateInput,
+  ) {
+    setError("");
+
+    try {
+      replacePaper(await actions.updateSection(paper.id, sectionId, input));
+    } catch (sectionError) {
+      setError(errorMessage(sectionError));
+    }
+  }
+
+  async function addQuestion(question: QuestionRepositoryItem) {
     if (!selectedSection) {
       return;
     }
 
-    updateSection(
-      selectedSection.id,
-      addQuestionToSection({ section: selectedSection, question }),
-    );
-  }
+    setError("");
 
-  function removeQuestion(sectionId: string, paperQuestionId: string) {
-    const section = paper.sections.find((item) => item.id === sectionId);
-    if (!section) {
-      return;
+    try {
+      replacePaper(
+        await actions.addQuestionToSection(
+          paper.id,
+          selectedSection.id,
+          question.id,
+        ),
+      );
+    } catch (addError) {
+      setError(errorMessage(addError));
     }
-
-    updateSection(
-      sectionId,
-      removeQuestionFromSection({ section, paperQuestionId }),
-    );
   }
 
-  function moveQuestion(
+  async function removeQuestion(sectionId: string, paperQuestionId: string) {
+    setError("");
+
+    try {
+      replacePaper(
+        await actions.removeQuestionFromSection(
+          paper.id,
+          sectionId,
+          paperQuestionId,
+        ),
+      );
+    } catch (removeError) {
+      setError(errorMessage(removeError));
+    }
+  }
+
+  async function moveQuestion(
     sectionId: string,
     paperQuestionId: string,
     direction: "up" | "down",
   ) {
-    const section = paper.sections.find((item) => item.id === sectionId);
-    if (!section) {
-      return;
-    }
+    setError("");
 
-    updateSection(
-      sectionId,
-      moveQuestionInSection({ section, paperQuestionId, direction }),
-    );
+    try {
+      replacePaper(
+        await actions.moveQuestionInSection(
+          paper.id,
+          sectionId,
+          paperQuestionId,
+          direction,
+        ),
+      );
+    } catch (moveError) {
+      setError(errorMessage(moveError));
+    }
   }
 
   return (
@@ -109,12 +197,13 @@ export function PaperEditorClient({
             {paper.title}
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-            {paper.gradeName} · {paper.subjectName} · {paper.durationMinutes}{" "}
-            minutes · {validation.totalMarks} marks
+            {paper.gradeName} | {paper.subjectName} | {paper.durationMinutes}{" "}
+            minutes | {validation.totalMarks} marks
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusBadge label={formatStatus(paper.status)} tone="neutral" />
+          <StatusBadge label="Persisted SQLite" tone="success" />
           <StatusBadge
             label={
               validation.issues.length
@@ -126,6 +215,12 @@ export function PaperEditorClient({
         </div>
       </section>
 
+      {error ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
       <div className="grid gap-5 xl:grid-cols-[220px_minmax(0,1fr)_360px]">
         <SectionOutline
           sections={paper.sections}
@@ -134,7 +229,26 @@ export function PaperEditorClient({
         />
 
         <main className="space-y-5">
-          <PaperMetadata paper={paper} totalMarks={validation.totalMarks} />
+          <PaperSettingsPanel
+            draft={metadataDraft}
+            paper={paper}
+            totalMarks={validation.totalMarks}
+            isSaving={isSavingPaper}
+            onChange={setMetadataDraft}
+            onArchive={() => void archivePaper()}
+            onSave={() => void savePaperMetadata()}
+          />
+          {selectedSection ? (
+            <SectionSettingsPanel
+              key={selectedSection.id}
+              section={selectedSection}
+              isAddingSection={isAddingSection}
+              onAddSection={() => void createSection()}
+              onSaveSection={(input) =>
+                void saveSection(selectedSection.id, input)
+              }
+            />
+          ) : null}
           <TemplateApplicationNotice />
           <DocumentPreview
             paper={paper}
@@ -189,7 +303,7 @@ function SectionOutline({
           >
             <span className="block font-medium">{section.title}</span>
             <span className="mt-1 block text-xs">
-              {section.questions.length} questions ·{" "}
+              {section.questions.length} questions |{" "}
               {calculateSectionMarks(section)} marks
             </span>
           </button>
@@ -199,19 +313,223 @@ function SectionOutline({
   );
 }
 
-function PaperMetadata({
+function PaperSettingsPanel({
+  draft,
   paper,
   totalMarks,
+  isSaving,
+  onChange,
+  onArchive,
+  onSave,
 }: {
+  draft: PaperUpdateInput;
   paper: PaperBuilderItem;
   totalMarks: number;
+  isSaving: boolean;
+  onChange: (input: PaperUpdateInput) => void;
+  onArchive: () => void;
+  onSave: () => void;
 }) {
   return (
-    <section className="grid gap-3 rounded-lg border border-border bg-card p-4 shadow-sm md:grid-cols-4">
-      <MetadataBadge label="Grade" value={paper.gradeName} />
-      <MetadataBadge label="Subject" value={paper.subjectName} />
-      <MetadataBadge label="Total marks" value={String(totalMarks)} />
-      <MetadataBadge label="Duration" value={`${paper.durationMinutes} min`} />
+    <section className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-5 py-4">
+        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+          <div>
+            <h2 className="text-sm font-semibold">Paper settings</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Persisted paper metadata, selected template, target marks, and
+              status.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={onArchive}
+              disabled={isSaving || paper.status === "ARCHIVED"}
+            >
+              <Archive className="size-4" aria-hidden="true" />
+              Archive
+            </Button>
+            <Button onClick={onSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save settings"}
+            </Button>
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-4 p-5 md:grid-cols-4">
+        <Field label="Title" className="md:col-span-2">
+          <input
+            value={draft.title}
+            onChange={(event) =>
+              onChange({ ...draft, title: event.target.value })
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <Field label="Status">
+          <select
+            value={draft.status}
+            onChange={(event) =>
+              onChange({
+                ...draft,
+                status: event.target.value as PaperUpdateInput["status"],
+              })
+            }
+            className={fieldClassName}
+          >
+            <option value="DRAFT">Draft</option>
+            <option value="VALIDATING">Validating</option>
+            <option value="READY_FOR_REVIEW">Ready for review</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+        </Field>
+        <Field label="Duration">
+          <input
+            type="number"
+            min="1"
+            value={draft.durationMinutes}
+            onChange={(event) =>
+              onChange({
+                ...draft,
+                durationMinutes: Number(event.target.value),
+              })
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <Field label="Subject">
+          <input
+            value={draft.subjectName}
+            onChange={(event) =>
+              onChange({ ...draft, subjectName: event.target.value })
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <Field label="Grade">
+          <input
+            value={draft.gradeName}
+            onChange={(event) =>
+              onChange({ ...draft, gradeName: event.target.value })
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <Field label="Target marks">
+          <input
+            type="number"
+            min="0"
+            value={draft.totalMarksTarget ?? 0}
+            onChange={(event) =>
+              onChange({
+                ...draft,
+                totalMarksTarget: Number(event.target.value),
+              })
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <MetadataBadge label="Current marks" value={String(totalMarks)} />
+        <MetadataBadge
+          label="Template"
+          value={paper.templateName ?? "No template selected"}
+        />
+      </div>
+    </section>
+  );
+}
+
+function SectionSettingsPanel({
+  section,
+  isAddingSection,
+  onAddSection,
+  onSaveSection,
+}: {
+  section: PaperSectionItem;
+  isAddingSection: boolean;
+  onAddSection: () => void;
+  onSaveSection: (input: PaperSectionUpdateInput) => void;
+}) {
+  const [draft, setDraft] = useState<PaperSectionUpdateInput>({
+    title: section.title,
+    instructions: section.instructions,
+    expectedMarks: section.expectedMarks,
+    order: section.order,
+  });
+
+  return (
+    <section className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex flex-col justify-between gap-3 border-b border-border px-5 py-4 md:flex-row md:items-center">
+        <div>
+          <h2 className="text-sm font-semibold">Selected section</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Edit section instructions and expected marks, or add another
+            section.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={onAddSection}
+            disabled={isAddingSection}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            {isAddingSection ? "Adding..." : "Section"}
+          </Button>
+          <Button onClick={() => onSaveSection(draft)}>Save section</Button>
+        </div>
+      </div>
+      <div className="grid gap-4 p-5 md:grid-cols-[1fr_1fr_120px_100px]">
+        <Field label="Title">
+          <input
+            value={draft.title}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, title: event.target.value }))
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <Field label="Instructions">
+          <input
+            value={draft.instructions ?? ""}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                instructions: event.target.value,
+              }))
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <Field label="Target marks">
+          <input
+            type="number"
+            min="0"
+            value={draft.expectedMarks ?? 0}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                expectedMarks: Number(event.target.value),
+              }))
+            }
+            className={fieldClassName}
+          />
+        </Field>
+        <Field label="Order">
+          <input
+            type="number"
+            min="1"
+            value={draft.order}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                order: Number(event.target.value),
+              }))
+            }
+            className={fieldClassName}
+          />
+        </Field>
+      </div>
     </section>
   );
 }
@@ -265,8 +583,8 @@ function DocumentPreview({
             {paper.title}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {paper.gradeName} · {paper.subjectName} · {paper.durationMinutes}{" "}
-            minutes · {calculatePaperTotalMarks(paper.sections)} marks
+            {paper.gradeName} | {paper.subjectName} | {paper.durationMinutes}{" "}
+            minutes | {calculatePaperTotalMarks(paper.sections)} marks
           </p>
         </div>
 
@@ -565,6 +883,25 @@ function MetadataBadge({ label, value }: { label: string; value: string }) {
   );
 }
 
+function Field({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <label
+      className={`grid gap-1 text-xs font-medium text-muted-foreground ${className}`}
+    >
+      {label}
+      {children}
+    </label>
+  );
+}
+
 function StatusBadge({
   label,
   tone,
@@ -594,3 +931,26 @@ function formatStatus(value: string) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
+
+function toPaperUpdateInput(paper: PaperBuilderItem): PaperUpdateInput {
+  return {
+    title: paper.title,
+    gradeId: paper.gradeId,
+    gradeName: paper.gradeName,
+    subjectId: paper.subjectId,
+    subjectName: paper.subjectName,
+    durationMinutes: paper.durationMinutes,
+    totalMarksTarget: paper.totalMarksTarget,
+    templateVersionId: paper.templateVersionId,
+    status: paper.status,
+  };
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "The paper could not be saved. Please try again.";
+}
+
+const fieldClassName =
+  "h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring";

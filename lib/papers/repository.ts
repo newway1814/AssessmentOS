@@ -1,7 +1,7 @@
-import { mockPaperRepository } from "@/lib/papers/mock-paper-repository";
+import { drizzlePaperRepository } from "@/lib/papers/drizzle-paper-repository";
 import type { PaperBuilderAdapter, PaperBuilderItem } from "@/lib/papers/types";
 
-export const paperRepository: PaperBuilderAdapter = mockPaperRepository;
+export const paperRepository: PaperBuilderAdapter = drizzlePaperRepository;
 
 export function sortPapersByUpdatedAt(papers: PaperBuilderItem[]) {
   return [...papers].sort(

@@ -27,7 +27,10 @@ export type PaperBuilderItem = {
   gradeName: string;
   subjectId: string;
   subjectName: string;
+  templateVersionId?: string;
+  templateName?: string;
   durationMinutes: number;
+  totalMarksTarget?: number;
   status: PaperStatus;
   sections: PaperSectionItem[];
   updatedAt: string;
@@ -40,6 +43,22 @@ export type PaperCreateInput = {
   subjectId: string;
   subjectName: string;
   durationMinutes: number;
+  totalMarksTarget?: number;
+  templateVersionId?: string;
+};
+
+export type PaperUpdateInput = PaperCreateInput & {
+  status: PaperStatus;
+};
+
+export type PaperSectionCreateInput = {
+  title: string;
+  instructions?: string;
+  expectedMarks?: number;
+};
+
+export type PaperSectionUpdateInput = PaperSectionCreateInput & {
+  order: number;
 };
 
 export type PaperValidationSummary = {
@@ -57,4 +76,43 @@ export type PaperBuilderAdapter = {
   listPapers(): Promise<PaperBuilderItem[]>;
   getPaper(id: string): Promise<PaperBuilderItem | undefined>;
   createPaper(input: PaperCreateInput): Promise<PaperBuilderItem>;
+  updatePaper(id: string, input: PaperUpdateInput): Promise<PaperBuilderItem>;
+  archivePaper(id: string): Promise<PaperBuilderItem>;
+  createSection(
+    paperId: string,
+    input: PaperSectionCreateInput,
+  ): Promise<PaperBuilderItem>;
+  updateSection(
+    paperId: string,
+    sectionId: string,
+    input: PaperSectionUpdateInput,
+  ): Promise<PaperBuilderItem>;
+  addQuestionToSection(
+    paperId: string,
+    sectionId: string,
+    questionId: string,
+  ): Promise<PaperBuilderItem>;
+  removeQuestionFromSection(
+    paperId: string,
+    sectionId: string,
+    paperQuestionId: string,
+  ): Promise<PaperBuilderItem>;
+  moveQuestionInSection(
+    paperId: string,
+    sectionId: string,
+    paperQuestionId: string,
+    direction: "up" | "down",
+  ): Promise<PaperBuilderItem>;
 };
+
+export type PaperBuilderMutations = Pick<
+  PaperBuilderAdapter,
+  | "createPaper"
+  | "updatePaper"
+  | "archivePaper"
+  | "createSection"
+  | "updateSection"
+  | "addQuestionToSection"
+  | "removeQuestionFromSection"
+  | "moveQuestionInSection"
+>;
