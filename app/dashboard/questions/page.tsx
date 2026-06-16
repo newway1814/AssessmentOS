@@ -1,5 +1,5 @@
 import { QuestionRepositoryClient } from "@/components/questions/question-repository-client";
-import { questionRepository } from "@/lib/questions/repository";
+import { getQuestionRepository } from "@/lib/questions/repository";
 
 import {
   archiveQuestionAction,
@@ -10,7 +10,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function QuestionsPage() {
-  const questions = await questionRepository.listQuestions();
+  const questions = await (await getQuestionRepository()).listQuestions();
 
   return (
     <QuestionRepositoryClient

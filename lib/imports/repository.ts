@@ -1,5 +1,7 @@
 import { createMockNormalizedQuestions } from "@/lib/imports/helpers";
-import { drizzleImportRepository } from "@/lib/imports/drizzle-import-repository";
+import { getCurrentWorkspaceContext } from "@/lib/auth/session";
+import { db } from "@/lib/db/client";
+import { createDrizzleImportRepository } from "@/lib/imports/drizzle-import-repository";
 import type {
   NewImportDraft,
   NormalizedQuestionCandidateInput,
@@ -160,7 +162,9 @@ export const mockImportRepository: QuestionImportAdapter = {
   },
 };
 
-export const importRepository = drizzleImportRepository;
+export async function getImportRepository(): Promise<QuestionImportAdapter> {
+  return createDrizzleImportRepository(db, await getCurrentWorkspaceContext());
+}
 
 function updateMockCandidate(
   importId: string,

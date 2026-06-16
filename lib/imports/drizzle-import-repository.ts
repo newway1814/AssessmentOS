@@ -4,7 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { auditLogs, importBatches, importCandidates, users } from "@/db/schema";
-import { db as defaultDb, type DatabaseClient } from "@/lib/db/client";
+import type { RepositoryWorkspaceContext } from "@/lib/auth/session";
+import type { DatabaseClient } from "@/lib/db/client";
 import { rightsStatuses, sourceTypes } from "@/lib/domain/constants";
 import { createMockNormalizedQuestions } from "@/lib/imports/helpers";
 import {
@@ -13,7 +14,6 @@ import {
   type QuestionImportAdapter,
   type QuestionImportBatch,
 } from "@/lib/imports/types";
-import { demoTenantContext, type DemoTenantContext } from "@/lib/demo-tenant";
 import { createDrizzleQuestionRepository } from "@/lib/questions/drizzle-question-repository";
 
 const newImportBoundarySchema = z.object({
@@ -63,8 +63,8 @@ type ImportBatchRow = typeof importBatches.$inferSelect;
 type ImportCandidateRow = typeof importCandidates.$inferSelect;
 
 export function createDrizzleImportRepository(
-  database: DatabaseClient = defaultDb,
-  tenant: DemoTenantContext = demoTenantContext,
+  database: DatabaseClient,
+  tenant: RepositoryWorkspaceContext,
 ): QuestionImportAdapter {
   return {
     async listImports() {
@@ -256,11 +256,9 @@ export function createDrizzleImportRepository(
   };
 }
 
-export const drizzleImportRepository = createDrizzleImportRepository();
-
 async function updateCandidateStatus(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   {
     importId,
     candidateId,
@@ -359,7 +357,7 @@ function mapCandidate(candidate: ImportCandidateRow): NormalizedQuestionCard {
 
 async function findTenantBatch(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   importId: string,
 ) {
   const [batch] = await database
@@ -379,7 +377,7 @@ async function findTenantBatch(
 
 async function getBatchOrThrow(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   importId: string,
 ) {
   const batch = await findTenantBatch(database, tenant, importId);
@@ -393,7 +391,7 @@ async function getBatchOrThrow(
 
 async function getTenantCandidateOrThrow(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   importId: string,
   candidateId: string,
 ) {
@@ -484,7 +482,7 @@ function questionInputFromCandidate(candidate: ImportCandidateRow) {
 
 async function writeAuditLog(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   {
     action,
     targetId,

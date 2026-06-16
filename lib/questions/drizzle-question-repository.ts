@@ -14,15 +14,12 @@ import {
   subjects,
   subtopics,
 } from "@/db/schema";
-import { db as defaultDb, type DatabaseClient } from "@/lib/db/client";
+import type { DatabaseClient } from "@/lib/db/client";
 import {
   questionInputSchema,
   questionSourceInputSchema,
 } from "@/lib/domain/schemas";
-import {
-  demoTenantContext,
-  type QuestionTenantContext,
-} from "@/lib/questions/demo-tenant";
+import type { RepositoryWorkspaceContext } from "@/lib/auth/session";
 import type {
   QuestionRepositoryAdapter,
   QuestionRepositoryAnswerKey,
@@ -55,8 +52,8 @@ type QuestionSourceRow = typeof questionSources.$inferSelect;
 type QuestionVersionRow = typeof questionVersions.$inferSelect;
 
 export function createDrizzleQuestionRepository(
-  database: DatabaseClient = defaultDb,
-  tenant: QuestionTenantContext = demoTenantContext,
+  database: DatabaseClient,
+  tenant: RepositoryWorkspaceContext,
 ): QuestionRepositoryAdapter {
   return {
     async listQuestions() {
@@ -233,11 +230,9 @@ export function createDrizzleQuestionRepository(
   };
 }
 
-export const drizzleQuestionRepository = createDrizzleQuestionRepository();
-
 async function parseQuestionForm(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   input: QuestionRepositoryFormValues,
 ) {
   const boundary = questionFormBoundarySchema.parse(input);
@@ -284,7 +279,7 @@ async function parseQuestionForm(
 
 async function getQuestionOrThrow(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   questionId: string,
 ) {
   const question = await findTenantQuestion(database, tenant, questionId);
@@ -298,7 +293,7 @@ async function getQuestionOrThrow(
 
 async function findTenantQuestion(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   questionId: string,
 ) {
   const [question] = await database
@@ -444,7 +439,7 @@ function mapQuestionSource(source: QuestionSourceRow) {
 
 async function ensureSubject(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   name: string,
 ) {
   const normalizedName = name.trim();
@@ -476,7 +471,7 @@ async function ensureSubject(
 
 async function ensureGrade(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   name: string,
 ) {
   const normalizedName = name.trim();
@@ -509,7 +504,7 @@ async function ensureGrade(
 
 async function ensureChapter(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   subjectId: string,
   name?: string,
 ) {
@@ -546,7 +541,7 @@ async function ensureChapter(
 
 async function ensureSubtopic(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   chapterId?: string,
   name?: string,
 ) {
@@ -599,7 +594,7 @@ async function insertQuestionVersion(
     questionVersionId: string;
     versionNumber: number;
     input: Awaited<ReturnType<typeof parseQuestionForm>>;
-    tenant: QuestionTenantContext;
+    tenant: RepositoryWorkspaceContext;
     now: string;
     changeReason: string;
   },
@@ -645,7 +640,7 @@ async function insertQuestionVersion(
 
 async function writeAuditLog(
   database: DatabaseClient,
-  tenant: QuestionTenantContext,
+  tenant: RepositoryWorkspaceContext,
   {
     action,
     targetId,

@@ -1,4 +1,4 @@
-import { questionRepository } from "@/lib/questions/repository";
+import { getQuestionRepository } from "@/lib/questions/repository";
 import { moveQuestionInSection } from "@/lib/papers/helpers";
 import type {
   PaperBuilderAdapter,
@@ -157,7 +157,7 @@ export const mockPaperRepository: PaperBuilderAdapter = {
   async addQuestionToSection(paperId, sectionId, questionId) {
     const [paper, questions] = await Promise.all([
       this.getPaper(paperId),
-      questionRepository.listQuestions(),
+      (await getQuestionRepository()).listQuestions(),
     ]);
     const question = questions.find((item) => item.id === questionId);
 
@@ -264,7 +264,7 @@ async function getPapers() {
 }
 
 async function buildDemoPapers(): Promise<PaperBuilderItem[]> {
-  const questions = await questionRepository.listQuestions();
+  const questions = await (await getQuestionRepository()).listQuestions();
   const algebraQuestion = questions.find(
     (question) => question.id === "question-linear-equations-1",
   );

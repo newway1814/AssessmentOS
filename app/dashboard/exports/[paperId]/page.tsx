@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { ExportPreviewClient } from "@/components/exports/export-preview-client";
-import { exportPreviewRepository } from "@/lib/exports/repository";
+import { getExportPreviewRepository } from "@/lib/exports/repository";
 
 import {
   updateExportPreviewStateAction,
@@ -16,7 +16,9 @@ export default async function ExportPreviewPage({
   params: Promise<{ paperId: string }>;
 }) {
   const { paperId } = await params;
-  const preview = await exportPreviewRepository.getExportPreview(paperId);
+  const preview = await (
+    await getExportPreviewRepository()
+  ).getExportPreview(paperId);
 
   if (!preview) {
     notFound();

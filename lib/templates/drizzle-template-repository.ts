@@ -4,8 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { auditLogs, templates, templateVersions } from "@/db/schema";
-import { db as defaultDb, type DatabaseClient } from "@/lib/db/client";
-import { demoTenantContext, type DemoTenantContext } from "@/lib/demo-tenant";
+import type { RepositoryWorkspaceContext } from "@/lib/auth/session";
+import type { DatabaseClient } from "@/lib/db/client";
 import { templateStatuses, templateTypes } from "@/lib/domain/constants";
 import { templateInputSchema } from "@/lib/domain/schemas";
 import { createMockImportPreview } from "@/lib/templates/helpers";
@@ -55,8 +55,8 @@ type TemplateRow = typeof templates.$inferSelect;
 type TemplateVersionRow = typeof templateVersions.$inferSelect;
 
 export function createDrizzleTemplateRepository(
-  database: DatabaseClient = defaultDb,
-  tenant: DemoTenantContext = demoTenantContext,
+  database: DatabaseClient,
+  tenant: RepositoryWorkspaceContext,
 ): SchoolTemplateAdapter {
   return {
     async listTemplates() {
@@ -72,13 +72,13 @@ export function createDrizzleTemplateRepository(
         .orderBy(desc(templates.updatedAt));
 
       return Promise.all(
-        rows.map((template) => mapTemplate(database, template)),
+        rows.map((template) => mapTemplate(database, tenant, template)),
       );
     },
 
     async getTemplate(id) {
       const template = await findTenantTemplate(database, tenant, id);
-      return template ? mapTemplate(database, template) : undefined;
+      return template ? mapTemplate(database, tenant, template) : undefined;
     },
 
     async createTemplate(input) {
@@ -182,11 +182,9 @@ export function createDrizzleTemplateRepository(
   };
 }
 
-export const drizzleTemplateRepository = createDrizzleTemplateRepository();
-
 async function findTenantTemplate(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   templateId: string,
 ) {
   const [template] = await database
@@ -206,7 +204,7 @@ async function findTenantTemplate(
 
 async function getTemplateOrThrow(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   templateId: string,
 ) {
   const template = await findTenantTemplate(database, tenant, templateId);
@@ -215,11 +213,12 @@ async function getTemplateOrThrow(
     throw new Error(`Template ${templateId} was not found.`);
   }
 
-  return mapTemplate(database, template);
+  return mapTemplate(database, tenant, template);
 }
 
 async function mapTemplate(
   database: DatabaseClient,
+  tenant: RepositoryWorkspaceContext,
   template: TemplateRow,
 ): Promise<SchoolTemplateItem> {
   const latestVersion = await getLatestVersion(database, template.id);
@@ -228,7 +227,7 @@ async function mapTemplate(
   return {
     id: template.id,
     schoolId: template.schoolId,
-    workspaceId: template.workspaceId ?? demoTenantContext.workspaceId,
+    workspaceId: template.workspaceId ?? tenant.workspaceId,
     name: template.name,
     type: template.type,
     schoolName: structure.schoolName,
@@ -260,7 +259,7 @@ async function getLatestVersion(database: DatabaseClient, templateId: string) {
 
 function parseTemplateForm(
   input: SchoolTemplateFormValues,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
 ) {
   const parsed = templateFormBoundarySchema.parse(input);
 
@@ -374,7 +373,7 @@ async function insertTemplateVersion(
 
 async function writeAuditLog(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   {
     action,
     targetId,

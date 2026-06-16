@@ -10,9 +10,11 @@ AssessmentOS has a coherent MVP product surface for the end-to-end assessment wo
 - School template editor and preview
 - Export preview and assignment-mode placeholders
 - Drizzle + SQLite schema, migration, seed, and database client
+- Drizzle-backed persistence for imports, questions, papers, templates, and export requests
+- Provider-replaceable dev/demo session and workspace context abstraction
 - Specs for database setup, security, data model, and persistence migration
 
-The app is not production-ready yet. It is a demo-mode MVP shell with real architecture foundations and mocked workflow adapters.
+The app is not production-ready yet. It is a demo-mode MVP with real local persistence and a replaceable auth/workspace abstraction, but no real login provider or production deployment controls.
 
 ## Real Systems
 
@@ -23,40 +25,38 @@ The app is not production-ready yet. It is a demo-mode MVP shell with real archi
 - SQLite migration in `drizzle/`
 - Seed script in `db/seed.ts`
 - Domain validation helpers and tests
-- Mocked repository/service boundaries that can be replaced one workflow at a time
+- Tenant-scoped repository constructors that require school/workspace/user context
+- Role and permission helpers in `lib/auth/session.ts`
+- Audit logs written by persisted mutation paths
 
 ## Mocked Systems
 
-- Question repository data access in the UI
-- Import batches and normalized question cards
-- Paper list/editor persistence
-- Template list/editor persistence
-- Export readiness records and preview composition
 - Approval decisions and comments
 - Audit activity shown to users
+- Real login/session provider
+- Upload storage, OCR, AI normalization, and generated PDF/DOCX artifacts
 
 ## Security Gaps
 
-- No authentication is connected.
-- No role-based authorization is enforced.
-- Tenant isolation exists in schema design but not in runtime policies.
+- Real authentication provider is not connected.
+- Local development uses a dev/demo session provider.
+- Role permission helpers exist, but route protection is still lightweight.
 - There is no session handling, CSRF strategy, rate limiting, or protected mutation layer.
-- Sensitive operations are not backed by audit logs yet.
+- Persisted mutation paths write audit logs, but there is no audit-log review UI yet.
 - File and AI workflows are placeholders and must not accept untrusted production input.
 
 ## Persistence Gaps
 
-- UI workflows still use mock adapters.
-- Drizzle tables exist, but repository functions do not yet read/write them.
-- Mutation paths do not yet create question versions, validation records, export requests, or audit logs.
+- Validation results are not yet persisted for every runtime validation run.
+- Approval requests, comments, analytics, and enterprise controls are still planned.
 - Local SQLite is suitable for MVP development and demo persistence, not a final multi-tenant production hosting decision.
 
 ## Auth Gaps
 
-- No user login or session model is wired into the app.
-- Role assignments exist in the schema, but there are no policy helpers.
-- School/workspace context is hardcoded in mocks.
-- Future protected routes must resolve active user, school, workspace, and role before data access.
+- `getCurrentSession()` and `getCurrentWorkspaceContext()` resolve a centralized dev/demo session.
+- Feature repositories receive school/workspace/user context through request-bound factory helpers.
+- Role permissions cover questions, imports, papers, templates, exports, and audit-log viewing.
+- Future protected routes must replace the dev/demo provider with a real session source and active workspace selector.
 
 ## Upload, AI, And Export Gaps
 
@@ -70,10 +70,10 @@ The app is not production-ready yet. It is a demo-mode MVP shell with real archi
 ## Recommended Production Roadmap
 
 1. Restore every MVP workflow to green checks before adding new product behavior.
-2. Replace mock repositories with Drizzle-backed repositories in the order defined in `specs/PERSISTENCE_PLAN.md`.
-3. Add tenant-scoped repository helpers requiring `schoolId` and `workspaceId`.
-4. Add authentication and role-policy helpers before any production data is exposed.
-5. Persist validation results and audit logs for every mutation.
+2. Replace the dev/demo session provider with real Auth.js, Clerk, or school SSO integration.
+3. Add route protection, CSRF/rate limiting, and a production session store.
+4. Build audit-log review and administrative role-assignment surfaces.
+5. Persist validation results for every mutation and export readiness run.
 6. Add upload storage behind an abstraction before real OCR or AI processing.
 7. Implement AI normalization only through import candidates with source/rights review.
 8. Persist export requests before building real PDF/DOCX rendering.
@@ -83,7 +83,7 @@ The app is not production-ready yet. It is a demo-mode MVP shell with real archi
 
 AssessmentOS should not be treated as production-ready until:
 
-- Auth and tenant authorization are enforced server-side.
+- Real auth and tenant authorization are enforced server-side.
 - Mock adapters are retired for core workflows.
 - Mutations are audited.
 - Validation and content-rights checks block unsafe exports.

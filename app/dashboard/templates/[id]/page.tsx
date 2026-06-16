@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { TemplateEditorClient } from "@/components/templates/template-editor-client";
-import { templateRepository } from "@/lib/templates/repository";
+import { getTemplateRepository } from "@/lib/templates/repository";
 
 import { archiveTemplateAction, updateTemplateAction } from "../actions";
 
@@ -13,7 +13,7 @@ export default async function TemplateEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const template = await templateRepository.getTemplate(id);
+  const template = await (await getTemplateRepository()).getTemplate(id);
 
   if (!template) {
     notFound();

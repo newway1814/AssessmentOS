@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { PaperEditorClient } from "@/components/papers/paper-editor-client";
-import { paperRepository } from "@/lib/papers/repository";
-import { questionRepository } from "@/lib/questions/repository";
+import { getPaperRepository } from "@/lib/papers/repository";
+import { getQuestionRepository } from "@/lib/questions/repository";
 
 import {
   addQuestionToPaperSectionAction,
@@ -22,6 +22,10 @@ export default async function PaperEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const [paperRepository, questionRepository] = await Promise.all([
+    getPaperRepository(),
+    getQuestionRepository(),
+  ]);
   const [paper, questions] = await Promise.all([
     paperRepository.getPaper(id),
     questionRepository.listQuestions(),

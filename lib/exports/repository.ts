@@ -9,8 +9,10 @@ import {
   templates,
   templateVersions,
 } from "@/db/schema";
-import { db as defaultDb, type DatabaseClient } from "@/lib/db/client";
-import { demoTenantContext, type DemoTenantContext } from "@/lib/demo-tenant";
+import type { RepositoryWorkspaceContext } from "@/lib/auth/session";
+import { getCurrentWorkspaceContext } from "@/lib/auth/session";
+import { db } from "@/lib/db/client";
+import type { DatabaseClient } from "@/lib/db/client";
 import {
   buildExportPreview,
   buildExportReadinessSummary,
@@ -72,8 +74,8 @@ const readinessSummarySchema = z
 type ExportRequestRow = typeof exportRequests.$inferSelect;
 
 export function createDrizzleExportRepository(
-  database: DatabaseClient = defaultDb,
-  tenant: DemoTenantContext = demoTenantContext,
+  database: DatabaseClient,
+  tenant: RepositoryWorkspaceContext,
 ): ExportRepositoryAdapter {
   return {
     async listExportRequests() {
@@ -168,11 +170,13 @@ export function createDrizzleExportRepository(
   };
 }
 
-export const exportPreviewRepository = createDrizzleExportRepository();
+export async function getExportPreviewRepository(): Promise<ExportRepositoryAdapter> {
+  return createDrizzleExportRepository(db, await getCurrentWorkspaceContext());
+}
 
 async function createOrUpdateExportRequest(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   input: ExportRequestInput,
   status: ExportRequestStatus,
 ): Promise<ExportRequestItem> {
@@ -243,7 +247,7 @@ async function createOrUpdateExportRequest(
 
 async function getPreviewForPaper(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   paperId: string,
 ): Promise<PersistedPaperExportPreview | undefined> {
   const context = await getExportContext(database, tenant, paperId);
@@ -281,7 +285,7 @@ async function getPreviewForPaper(
 
 async function getPreviewOrThrow(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   paperId: string,
 ) {
   const preview = await getPreviewForPaper(database, tenant, paperId);
@@ -295,7 +299,7 @@ async function getPreviewOrThrow(
 
 async function getExportContext(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   paperId: string,
 ) {
   const paper = await createDrizzlePaperRepository(database, tenant).getPaper(
@@ -329,7 +333,7 @@ async function getExportContext(
 
 async function getTemplateForVersion(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   templateVersionId: string,
 ): Promise<SchoolTemplateItem | undefined> {
   const [version] = await database
@@ -349,7 +353,7 @@ async function getTemplateForVersion(
 
 async function getDefaultTemplateVersionId(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
 ) {
   const [template] = await database
     .select()
@@ -379,7 +383,7 @@ async function getDefaultTemplateVersionId(
 
 async function mapExportRequest(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   request: ExportRequestRow,
 ): Promise<ExportRequestItem> {
   const paper = await createDrizzlePaperRepository(database, tenant).getPaper(
@@ -422,7 +426,7 @@ async function mapExportRequest(
 
 async function getLatestRequestForPaper(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   paperId: string,
 ) {
   const [request] = await database
@@ -443,7 +447,7 @@ async function getLatestRequestForPaper(
 
 async function getRequestOrThrow(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   requestId: string,
 ) {
   const [request] = await database
@@ -467,7 +471,7 @@ async function getRequestOrThrow(
 
 async function writeAuditLog(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   {
     action,
     targetId,

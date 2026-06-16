@@ -73,6 +73,10 @@ Permissions must account for school, campus, workspace, role, and ownership boun
 
 Authorization should be centralized in backend services or policy helpers so UI visibility is never the only protection.
 
+The current MVP uses a provider-neutral auth layer in `lib/auth/session.ts`. Server actions resolve `getCurrentWorkspaceContext()`, enforce role permissions with policy helpers, and pass school/workspace/user context into repository factories. Feature repositories must not import demo tenant constants or resolve sessions directly.
+
+The dev/demo session provider is a local replacement point for future Auth.js, Clerk, or school SSO integration. Real auth should preserve the same `AuthSession` and `WorkspaceContext` boundary so repositories and domain services remain provider-agnostic.
+
 ### Audit Logs
 
 Important actions must be auditable, including imports, edits, validation changes, approvals, comments, exports, role changes, and template changes.

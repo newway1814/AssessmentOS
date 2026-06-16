@@ -19,8 +19,7 @@ import {
   templates,
   templateVersions,
 } from "@/db/schema";
-import { db as defaultDb, type DatabaseClient } from "@/lib/db/client";
-import { demoTenantContext, type DemoTenantContext } from "@/lib/demo-tenant";
+import type { DatabaseClient } from "@/lib/db/client";
 import { paperStatuses } from "@/lib/domain/constants";
 import {
   paperInputSchema,
@@ -36,6 +35,7 @@ import type {
   PaperSectionItem,
   PaperUpdateInput,
 } from "@/lib/papers/types";
+import type { RepositoryWorkspaceContext } from "@/lib/auth/session";
 import type {
   QuestionRepositoryAnswerKey,
   QuestionRepositoryItem,
@@ -74,8 +74,8 @@ type PaperSectionRow = typeof paperSections.$inferSelect;
 type PaperQuestionRow = typeof paperQuestions.$inferSelect;
 
 export function createDrizzlePaperRepository(
-  database: DatabaseClient = defaultDb,
-  tenant: DemoTenantContext = demoTenantContext,
+  database: DatabaseClient,
+  tenant: RepositoryWorkspaceContext,
 ): PaperBuilderAdapter {
   return {
     async listPapers() {
@@ -449,11 +449,9 @@ export function createDrizzlePaperRepository(
   };
 }
 
-export const drizzlePaperRepository = createDrizzlePaperRepository();
-
 async function parsePaperCreate(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   input: PaperCreateInput,
 ) {
   const boundary = paperCreateBoundarySchema.parse(input);
@@ -490,7 +488,7 @@ async function parsePaperCreate(
 
 async function parsePaperUpdate(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   input: PaperUpdateInput,
 ) {
   const boundary = paperUpdateBoundarySchema.parse(input);
@@ -508,7 +506,7 @@ async function parsePaperUpdate(
 
 async function findTenantPaper(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   paperId: string,
 ) {
   const [paper] = await database
@@ -528,7 +526,7 @@ async function findTenantPaper(
 
 async function getPaperOrThrow(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   paperId: string,
 ) {
   const paper = await findTenantPaper(database, tenant, paperId);
@@ -739,7 +737,7 @@ async function getPinnedAnswerKey(
 
 async function findTenantQuestion(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   questionId: string,
 ) {
   const [question] = await database
@@ -783,7 +781,7 @@ async function getLatestQuestionVersion(
 
 async function findTenantSection(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   paperId: string,
   sectionId: string,
 ) {
@@ -806,7 +804,7 @@ async function findTenantSection(
 
 async function ensureSubject(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   name: string,
 ) {
   const normalizedName = name.trim();
@@ -838,7 +836,7 @@ async function ensureSubject(
 
 async function ensureGrade(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   name: string,
 ) {
   const normalizedName = name.trim();
@@ -871,7 +869,7 @@ async function ensureGrade(
 
 async function getDefaultTemplateVersionId(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
 ) {
   const [template] = await database
     .select()
@@ -1016,7 +1014,7 @@ async function touchPaper(
 
 async function writeAuditLog(
   database: DatabaseClient,
-  tenant: DemoTenantContext,
+  tenant: RepositoryWorkspaceContext,
   {
     action,
     targetId,

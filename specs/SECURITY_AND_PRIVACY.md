@@ -8,14 +8,25 @@
 
 ## Roles and Permissions
 
-Required role concepts:
+Implemented role concepts:
 
-- Teacher
-- Academic coordinator
-- Reviewer
-- School admin
+- `ADMIN`
+- `ACADEMIC_COORDINATOR`
+- `REVIEWER`
+- `TEACHER`
 
-Permissions should cover repository access, paper editing, template management, validation review, approval actions, exports, comments, and admin settings.
+Current permission helpers live in `lib/auth/session.ts`:
+
+- `canManageQuestions`
+- `canManageImports`
+- `canManagePapers`
+- `canManageTemplates`
+- `canCreateExports`
+- `canViewAuditLogs`
+
+The current app uses a provider-replaceable dev/demo session provider through `getCurrentSession()` and `getCurrentWorkspaceContext()`. Persisted repositories receive school/workspace/user context from server-side callers instead of importing demo tenant constants directly.
+
+Future real auth integration should replace only the session provider with Auth.js, Clerk, school SSO, or another provider, then add route protection, active workspace selection, CSRF/rate limiting, and production session storage.
 
 ## Auditability
 
@@ -30,6 +41,8 @@ Audit logs should capture important actions:
 - Approval actions
 - Export requests
 - Role and workspace changes
+
+Persisted mutation paths should write audit logs with the session actor ID where practical.
 
 ## Content Rights
 

@@ -1,5 +1,5 @@
 import { ImportIntakeClient } from "@/components/imports/import-intake-client";
-import { importRepository } from "@/lib/imports/repository";
+import { getImportRepository } from "@/lib/imports/repository";
 
 import {
   approveImportCandidateAction,
@@ -12,7 +12,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function ImportsPage() {
-  const imports = await importRepository.listImports();
+  const imports = await (await getImportRepository()).listImports();
 
   return (
     <ImportIntakeClient
