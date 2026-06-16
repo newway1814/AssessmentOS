@@ -4,6 +4,7 @@ import {
   FileText,
   LayoutDashboard,
   LibraryBig,
+  PlayCircle,
   Settings,
   Upload,
   WandSparkles,
@@ -11,6 +12,7 @@ import {
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Demo", href: "/dashboard/demo", icon: PlayCircle },
   { label: "Repository", href: "/dashboard/questions", icon: LibraryBig },
   { label: "Papers", href: "/dashboard/papers", icon: FileText },
   { label: "Templates", href: "/dashboard/templates", icon: WandSparkles },

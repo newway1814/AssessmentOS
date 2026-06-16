@@ -14,6 +14,9 @@ export function TopBar() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          <Button asChild variant="ghost">
+            <Link href="/dashboard/demo">Demo</Link>
+          </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard/imports">Import</Link>
           </Button>
