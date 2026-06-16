@@ -33,6 +33,7 @@ const batch: QuestionImportBatch = {
       rightsStatus: "VERIFIED",
       sourceTitle: "Teacher worksheet",
       sourceReference: "Internal",
+      usageRights: "Teacher-created content for internal use.",
       status: "APPROVED",
       confidence: 0.9,
     },
@@ -51,6 +52,7 @@ const batch: QuestionImportBatch = {
       rightsStatus: "RESTRICTED",
       sourceTitle: "Old paper",
       sourceReference: "Archive",
+      usageRights: "Rights require review.",
       status: "REJECTED",
       confidence: 0.7,
     },
@@ -90,5 +92,6 @@ describe("import helpers", () => {
     expect(questions).toHaveLength(2);
     expect(questions[0]?.prompt).toContain("Find the value of x.");
     expect(questions[0]?.sourceTitle).toBe("Teacher paste");
+    expect(questions[0]?.usageRights).toContain("reviewed");
   });
 });

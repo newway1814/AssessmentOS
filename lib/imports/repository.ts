@@ -1,6 +1,8 @@
 import { createMockNormalizedQuestions } from "@/lib/imports/helpers";
+import { drizzleImportRepository } from "@/lib/imports/drizzle-import-repository";
 import type {
   NewImportDraft,
+  NormalizedQuestionCandidateInput,
   QuestionImportAdapter,
   QuestionImportBatch,
 } from "@/lib/imports/types";
@@ -32,6 +34,8 @@ const mockImports: QuestionImportBatch[] = [
         rightsStatus: "VERIFIED",
         sourceTitle: "Grade 8 algebra worksheet paste",
         sourceReference: "Teacher-authored worksheet, June 2026",
+        usageRights:
+          "Teacher-created content for Riverside International School internal assessment use.",
         status: "NEEDS_REVIEW",
         confidence: 0.92,
       },
@@ -52,6 +56,8 @@ const mockImports: QuestionImportBatch[] = [
         rightsStatus: "VERIFIED",
         sourceTitle: "Grade 8 algebra worksheet paste",
         sourceReference: "Teacher-authored worksheet, June 2026",
+        usageRights:
+          "Teacher-created content for Riverside International School internal assessment use.",
         status: "NEEDS_REVIEW",
         confidence: 0.86,
       },
@@ -96,6 +102,7 @@ const mockImports: QuestionImportBatch[] = [
         rightsStatus: "VERIFIED",
         sourceTitle: "Partner assessment item bank",
         sourceReference: "Partner agreement AO-DEMO-2026",
+        usageRights: "Verified partner agreement AO-DEMO-2026.",
         status: "APPROVED",
         confidence: 0.95,
       },
@@ -103,7 +110,7 @@ const mockImports: QuestionImportBatch[] = [
   },
 ];
 
-export const importRepository: QuestionImportAdapter = {
+export const mockImportRepository: QuestionImportAdapter = {
   async listImports() {
     return mockImports;
   },
@@ -114,7 +121,7 @@ export const importRepository: QuestionImportAdapter = {
 
   async createMockImport(draft: NewImportDraft) {
     const normalizedQuestions = createMockNormalizedQuestions(draft);
-    return {
+    const nextImport: QuestionImportBatch = {
       id: `import-${Date.now()}`,
       title: draft.sourceTitle || draft.fileName || "New import draft",
       sourceOption: draft.sourceOption,
@@ -128,5 +135,63 @@ export const importRepository: QuestionImportAdapter = {
       fileName: draft.fileName || undefined,
       normalizedQuestions,
     };
+    mockImports.unshift(nextImport);
+    return nextImport;
+  },
+
+  async updateCandidate(importId, candidateId, input) {
+    updateMockCandidate(importId, candidateId, input);
+    return getMockImportOrThrow(importId);
+  },
+
+  async approveCandidate(importId, candidateId) {
+    updateMockCandidateStatus(importId, candidateId, "APPROVED");
+    return getMockImportOrThrow(importId);
+  },
+
+  async rejectCandidate(importId, candidateId) {
+    updateMockCandidateStatus(importId, candidateId, "REJECTED");
+    return getMockImportOrThrow(importId);
+  },
+
+  async markCandidateForLater(importId, candidateId) {
+    updateMockCandidateStatus(importId, candidateId, "EDIT_LATER");
+    return getMockImportOrThrow(importId);
   },
 };
+
+export const importRepository = drizzleImportRepository;
+
+function updateMockCandidate(
+  importId: string,
+  candidateId: string,
+  input: NormalizedQuestionCandidateInput,
+) {
+  const batch = getMockImportOrThrow(importId);
+
+  batch.normalizedQuestions = batch.normalizedQuestions.map((question) =>
+    question.id === candidateId ? { ...question, ...input } : question,
+  );
+}
+
+function updateMockCandidateStatus(
+  importId: string,
+  candidateId: string,
+  status: QuestionImportBatch["normalizedQuestions"][number]["status"],
+) {
+  const batch = getMockImportOrThrow(importId);
+
+  batch.normalizedQuestions = batch.normalizedQuestions.map((question) =>
+    question.id === candidateId ? { ...question, status } : question,
+  );
+}
+
+function getMockImportOrThrow(importId: string) {
+  const batch = mockImports.find((item) => item.id === importId);
+
+  if (!batch) {
+    throw new Error(`Import batch ${importId} was not found.`);
+  }
+
+  return batch;
+}

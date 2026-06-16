@@ -31,6 +31,7 @@ export type NormalizedQuestionReviewStatus =
 
 export type NormalizedQuestionCard = {
   id: string;
+  approvedQuestionId?: string;
   prompt: string;
   gradeName: string;
   subjectName: string;
@@ -44,6 +45,7 @@ export type NormalizedQuestionCard = {
   rightsStatus: RightsStatus;
   sourceTitle: string;
   sourceReference: string;
+  usageRights: string;
   status: NormalizedQuestionReviewStatus;
   confidence: number;
 };
@@ -72,6 +74,11 @@ export type NewImportDraft = {
   rightsStatus: RightsStatus;
 };
 
+export type NormalizedQuestionCandidateInput = Omit<
+  NormalizedQuestionCard,
+  "id" | "approvedQuestionId" | "status" | "confidence"
+>;
+
 export type ImportReadinessItem = {
   id: string;
   label: string;
@@ -83,4 +90,30 @@ export type QuestionImportAdapter = {
   listImports(): Promise<QuestionImportBatch[]>;
   getImport(importId: string): Promise<QuestionImportBatch | undefined>;
   createMockImport(draft: NewImportDraft): Promise<QuestionImportBatch>;
+  updateCandidate(
+    importId: string,
+    candidateId: string,
+    input: NormalizedQuestionCandidateInput,
+  ): Promise<QuestionImportBatch>;
+  approveCandidate(
+    importId: string,
+    candidateId: string,
+  ): Promise<QuestionImportBatch>;
+  rejectCandidate(
+    importId: string,
+    candidateId: string,
+  ): Promise<QuestionImportBatch>;
+  markCandidateForLater(
+    importId: string,
+    candidateId: string,
+  ): Promise<QuestionImportBatch>;
 };
+
+export type QuestionImportMutations = Pick<
+  QuestionImportAdapter,
+  | "createMockImport"
+  | "updateCandidate"
+  | "approveCandidate"
+  | "rejectCandidate"
+  | "markCandidateForLater"
+>;

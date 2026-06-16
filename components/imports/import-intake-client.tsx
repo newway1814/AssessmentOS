@@ -25,14 +25,15 @@ import {
 import {
   buildImportReadiness,
   countQuestionsByReviewStatus,
-  createMockNormalizedQuestions,
 } from "@/lib/imports/helpers";
 import type {
   ImportSourceOption,
   ImportStatus,
   NewImportDraft,
+  NormalizedQuestionCandidateInput,
   NormalizedQuestionCard,
   QuestionImportBatch,
+  QuestionImportMutations,
 } from "@/lib/imports/types";
 import { importSourceOptions } from "@/lib/imports/types";
 
@@ -86,8 +87,10 @@ const initialDraft: NewImportDraft = {
 };
 
 export function ImportIntakeClient({
+  actions,
   initialImports,
 }: {
+  actions: QuestionImportMutations;
   initialImports: QuestionImportBatch[];
 }) {
   const [imports, setImports] = useState(initialImports);
@@ -102,6 +105,8 @@ export function ImportIntakeClient({
   const [questions, setQuestions] = useState<NormalizedQuestionCard[]>(
     initialImports[0]?.normalizedQuestions ?? [],
   );
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const selectedQuestion =
     questions.find((question) => question.id === selectedQuestionId) ??
@@ -123,6 +128,7 @@ export function ImportIntakeClient({
   );
 
   function startNewImport() {
+    setError("");
     setMode("new");
     setActiveImport(null);
     setQuestions([]);
@@ -130,34 +136,50 @@ export function ImportIntakeClient({
   }
 
   function startReview(batch: QuestionImportBatch) {
+    setError("");
     setActiveImport(batch);
     setQuestions(batch.normalizedQuestions);
     setSelectedQuestionId(batch.normalizedQuestions[0]?.id ?? "");
     setMode("review");
   }
 
-  function createMockImport() {
-    const normalizedQuestions = createMockNormalizedQuestions(draft);
-    const nextImport: QuestionImportBatch = {
-      id: `import-${Date.now()}`,
-      title: draft.sourceTitle || draft.fileName || "New import draft",
-      sourceOption: draft.sourceOption,
-      status: "NEEDS_REVIEW",
-      submittedBy: "Current teacher",
-      createdAt: new Date().toISOString(),
-      questionCount: normalizedQuestions.length,
-      rightsSummary:
-        "Mock AI normalization only. Review source and rights metadata before repository approval.",
-      pastedText: draft.pastedText,
-      fileName: draft.fileName || undefined,
-      normalizedQuestions,
-    };
+  function replaceBatch(nextBatch: QuestionImportBatch) {
+    setImports((current) => {
+      const existingIndex = current.findIndex(
+        (item) => item.id === nextBatch.id,
+      );
 
-    setImports((current) => [nextImport, ...current]);
-    setActiveImport(nextImport);
-    setQuestions(normalizedQuestions);
-    setSelectedQuestionId(normalizedQuestions[0]?.id ?? "");
-    setMode("review");
+      if (existingIndex < 0) {
+        return [nextBatch, ...current];
+      }
+
+      return current.map((item) =>
+        item.id === nextBatch.id ? nextBatch : item,
+      );
+    });
+    setActiveImport(nextBatch);
+    setQuestions(nextBatch.normalizedQuestions);
+    setSelectedQuestionId((current) =>
+      nextBatch.normalizedQuestions.some((question) => question.id === current)
+        ? current
+        : (nextBatch.normalizedQuestions[0]?.id ?? ""),
+    );
+  }
+
+  async function createMockImport() {
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const nextImport = await actions.createMockImport(draft);
+
+      replaceBatch(nextImport);
+      setMode("review");
+    } catch (createError) {
+      setError(errorMessage(createError));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function updateQuestion<Key extends keyof NormalizedQuestionCard>(
@@ -172,11 +194,65 @@ export function ImportIntakeClient({
     );
   }
 
-  function setQuestionStatus(
+  async function saveQuestion(question: NormalizedQuestionCard) {
+    if (!activeImport) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError("");
+
+    try {
+      replaceBatch(
+        await actions.updateCandidate(
+          activeImport.id,
+          question.id,
+          candidateInputFromQuestion(question),
+        ),
+      );
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function setQuestionStatus(
     questionId: string,
     status: NormalizedQuestionCard["status"],
   ) {
-    updateQuestion(questionId, "status", status);
+    if (!activeImport) {
+      return;
+    }
+
+    const question = questions.find((item) => item.id === questionId);
+    if (!question) {
+      return;
+    }
+
+    setIsSaving(true);
+    setError("");
+
+    try {
+      await actions.updateCandidate(
+        activeImport.id,
+        question.id,
+        candidateInputFromQuestion(question),
+      );
+
+      const nextBatch =
+        status === "APPROVED"
+          ? await actions.approveCandidate(activeImport.id, questionId)
+          : status === "REJECTED"
+            ? await actions.rejectCandidate(activeImport.id, questionId)
+            : await actions.markCandidateForLater(activeImport.id, questionId);
+
+      replaceBatch(nextBatch);
+    } catch (statusError) {
+      setError(errorMessage(statusError));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -208,6 +284,12 @@ export function ImportIntakeClient({
 
       <RightsCallout />
 
+      {error ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+
       {mode === "history" ? (
         <ImportHistory imports={imports} onReview={startReview} />
       ) : null}
@@ -217,6 +299,7 @@ export function ImportIntakeClient({
           draft={draft}
           onDraftChange={setDraft}
           onCreateMockImport={createMockImport}
+          isSaving={isSaving}
         />
       ) : null}
 
@@ -228,7 +311,9 @@ export function ImportIntakeClient({
           reviewCounts={reviewCounts}
           onSelectQuestion={setSelectedQuestionId}
           onUpdateQuestion={updateQuestion}
+          onSaveQuestion={(question) => void saveQuestion(question)}
           onSetQuestionStatus={setQuestionStatus}
+          isSaving={isSaving}
         />
       ) : null}
     </div>
@@ -264,10 +349,15 @@ function ImportHistory({
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="border-b border-border px-5 py-4">
-        <h2 className="text-sm font-semibold">Import history</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {imports.length} mocked import batches in this workspace
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Import history</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {imports.length} persisted import batches in this workspace
+            </p>
+          </div>
+          <StatusBadge label="Persisted SQLite" tone="success" />
+        </div>
       </div>
       {imports.length === 0 ? (
         <div className="px-5 py-16 text-center">
@@ -329,10 +419,12 @@ function ImportHistory({
 
 function NewImportFlow({
   draft,
+  isSaving,
   onDraftChange,
   onCreateMockImport,
 }: {
   draft: NewImportDraft;
+  isSaving: boolean;
   onDraftChange: (draft: NewImportDraft) => void;
   onCreateMockImport: () => void;
 }) {
@@ -459,8 +551,12 @@ function NewImportFlow({
               </select>
             </Field>
           </div>
-          <Button className="mt-5 w-full" onClick={onCreateMockImport}>
-            Mock normalize questions
+          <Button
+            className="mt-5 w-full"
+            onClick={onCreateMockImport}
+            disabled={isSaving}
+          >
+            {isSaving ? "Creating import..." : "Mock normalize questions"}
           </Button>
         </section>
       </aside>
@@ -474,14 +570,17 @@ function ReviewWorkspace({
   selectedQuestion,
   reviewCounts,
   onSelectQuestion,
+  onSaveQuestion,
   onUpdateQuestion,
   onSetQuestionStatus,
+  isSaving,
 }: {
   batch: QuestionImportBatch;
   questions: NormalizedQuestionCard[];
   selectedQuestion?: NormalizedQuestionCard;
   reviewCounts: ReturnType<typeof countQuestionsByReviewStatus>;
   onSelectQuestion: (questionId: string) => void;
+  onSaveQuestion: (question: NormalizedQuestionCard) => void;
   onUpdateQuestion: <Key extends keyof NormalizedQuestionCard>(
     questionId: string,
     key: Key,
@@ -491,6 +590,7 @@ function ReviewWorkspace({
     questionId: string,
     status: NormalizedQuestionCard["status"],
   ) => void;
+  isSaving: boolean;
 }) {
   const readiness = buildImportReadiness(batch);
 
@@ -502,7 +602,8 @@ function ReviewWorkspace({
             <div>
               <h2 className="text-sm font-semibold">{batch.title}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Mock AI normalization preview · no repository write occurs.
+                Mock normalization preview | persisted review decisions and
+                metadata.
               </p>
             </div>
             <StatusBadge label={formatLabel(batch.status)} tone="warning" />
@@ -596,6 +697,8 @@ function ReviewWorkspace({
         {selectedQuestion ? (
           <QuestionMetadataInspector
             question={selectedQuestion}
+            isSaving={isSaving}
+            onSaveQuestion={onSaveQuestion}
             onUpdateQuestion={onUpdateQuestion}
             onSetQuestionStatus={onSetQuestionStatus}
           />
@@ -606,11 +709,15 @@ function ReviewWorkspace({
 }
 
 function QuestionMetadataInspector({
+  isSaving,
   question,
+  onSaveQuestion,
   onUpdateQuestion,
   onSetQuestionStatus,
 }: {
+  isSaving: boolean;
   question: NormalizedQuestionCard;
+  onSaveQuestion: (question: NormalizedQuestionCard) => void;
   onUpdateQuestion: <Key extends keyof NormalizedQuestionCard>(
     questionId: string,
     key: Key,
@@ -626,7 +733,8 @@ function QuestionMetadataInspector({
       <div className="border-b border-border p-5">
         <h2 className="text-sm font-semibold">Metadata inspector</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Edits stay in this mocked review session.
+          Edits are saved to the persisted import candidate before repository
+          approval.
         </p>
       </div>
       <div className="space-y-4 p-5">
@@ -793,23 +901,41 @@ function QuestionMetadataInspector({
             className={fieldClassName}
           />
         </Field>
+        <Field label="Usage rights">
+          <textarea
+            value={question.usageRights}
+            onChange={(event) =>
+              onUpdateQuestion(question.id, "usageRights", event.target.value)
+            }
+            className="min-h-20 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+          />
+        </Field>
         <div className="grid gap-2">
           <Button
+            variant="outline"
+            onClick={() => onSaveQuestion(question)}
+            disabled={isSaving}
+          >
+            {isSaving ? "Saving..." : "Save metadata"}
+          </Button>
+          <Button
             onClick={() => onSetQuestionStatus(question.id, "APPROVED")}
-            disabled={question.status === "APPROVED"}
+            disabled={isSaving || question.status === "APPROVED"}
           >
             <CheckCircle2 className="size-4" aria-hidden="true" />
-            Approve to repository placeholder
+            Approve to repository
           </Button>
           <Button
             variant="outline"
             onClick={() => onSetQuestionStatus(question.id, "EDIT_LATER")}
+            disabled={isSaving}
           >
             Edit later
           </Button>
           <Button
             variant="ghost"
             onClick={() => onSetQuestionStatus(question.id, "REJECTED")}
+            disabled={isSaving}
           >
             <XCircle className="size-4" aria-hidden="true" />
             Reject
@@ -913,4 +1039,31 @@ function reviewStatusTone(
   }
 
   return "warning";
+}
+
+function candidateInputFromQuestion(
+  question: NormalizedQuestionCard,
+): NormalizedQuestionCandidateInput {
+  return {
+    prompt: question.prompt,
+    gradeName: question.gradeName,
+    subjectName: question.subjectName,
+    chapterName: question.chapterName,
+    subtopicName: question.subtopicName,
+    marks: question.marks,
+    difficulty: question.difficulty,
+    type: question.type,
+    answerKey: question.answerKey,
+    sourceType: question.sourceType,
+    rightsStatus: question.rightsStatus,
+    sourceTitle: question.sourceTitle,
+    sourceReference: question.sourceReference,
+    usageRights: question.usageRights,
+  };
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "The import workflow could not be saved. Please try again.";
 }

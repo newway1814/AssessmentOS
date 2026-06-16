@@ -101,6 +101,7 @@ export function createMockNormalizedQuestions(
       rightsStatus: draft.rightsStatus,
       sourceTitle: baseSourceTitle,
       sourceReference,
+      usageRights: usageRightsForDraft(draft),
       status: "NEEDS_REVIEW",
       confidence: 0.91,
     },
@@ -120,8 +121,17 @@ export function createMockNormalizedQuestions(
       rightsStatus: draft.rightsStatus,
       sourceTitle: baseSourceTitle,
       sourceReference,
+      usageRights: usageRightsForDraft(draft),
       status: "NEEDS_REVIEW",
       confidence: 0.84,
     },
   ];
+}
+
+function usageRightsForDraft(draft: NewImportDraft) {
+  if (draft.rightsStatus === "VERIFIED") {
+    return "Source metadata reviewed for internal AssessmentOS demo use.";
+  }
+
+  return "Usage rights require review before repository approval.";
 }
