@@ -11,6 +11,11 @@ AssessmentOS is a spec-driven B2B SaaS project for school assessment operations.
 - Do not add random dependencies or broad refactors.
 - Preserve user work and keep changes scoped to the request.
 
+## Local Skills
+
+- Reusable workflow guidance lives in `.agents/skills/<skill-name>/SKILL.md`.
+- Load the matching skill for debugging, testing, browser checks, planning, spec work, source-driven work, code review, simplification, shipping, and git workflow tasks.
+
 ## Engineering Standards
 
 - Use strict TypeScript, clear domain types, Zod at boundaries, and discriminated unions for important workflow states.
