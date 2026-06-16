@@ -1,5 +1,11 @@
 # Data Model
 
+## Database Direction
+
+Use PostgreSQL with Prisma as the primary persistence path. The detailed database setup, migration policy, tenant decisions, and next schema pass are defined in [`DATABASE_SETUP.md`](./DATABASE_SETUP.md).
+
+The current implementation may use mock adapters for MVP UI workflows, but persistent data design should follow the database setup spec before real writes are introduced.
+
 ## Core Entities
 
 ### School
@@ -44,6 +50,8 @@ Canonical question card. Stores current normalized content, metadata, ownership,
 
 Key fields: schoolId, workspaceId, subjectId, gradeId, chapterId optional, subtopicId optional, type, prompt, marks, difficulty, status, sourceId, createdById, updatedAt.
 
+Questions should only represent approved repository content. Imported normalized drafts should remain as import candidates until reviewed and approved.
+
 ### QuestionVersion
 
 Immutable or append-only version record for significant question changes.
@@ -61,6 +69,22 @@ Key fields: sourceType, title, author, owner, license, usageRights, attributionT
 File import record for source documents, images, or templates.
 
 Key fields: schoolId, workspaceId, uploadedById, filename, contentType, byteSize, storageKey, sourceType, usageRights, processingStatus.
+
+Uploads are storage/source records, not normalized question drafts. Import review state should live in import-specific records.
+
+### ImportBatch
+
+MVP-ready import workflow record for pasted text, PDF/image/DOCX placeholders, school repository batches, or verified external source placeholders.
+
+Key fields: schoolId, workspaceId, uploadId optional, submittedById, sourceOption, status, rawText optional, rightsAcknowledgedAt optional, normalizationMetadata optional, createdAt, updatedAt.
+
+### ImportCandidate
+
+Normalized draft question card produced by import or mock normalization before repository approval.
+
+Key fields: importBatchId, normalized prompt and metadata, answer key draft, source/rights snapshot, confidence optional, reviewStatus, reviewedById optional, approvedQuestionId optional.
+
+Import candidates must preserve source and usage-rights metadata and must not enter the canonical question repository until approved.
 
 ### MediaAsset
 
@@ -84,7 +108,7 @@ Key fields: paperId, title, instructions, order, marks optional.
 
 Placement of a question inside a paper, including order, marks, overrides, and display settings.
 
-Question content should reference a question version or snapshot to avoid accidental changes after paper assembly.
+Question content should reference a required question version or snapshot to avoid accidental changes after paper assembly.
 
 ### Template
 
@@ -114,7 +138,7 @@ MVP may store placeholder readiness status before full answer-key generation exi
 
 Result of validation rules against a question, paper, template, import, or export target.
 
-Key fields: targetType, targetId, severity, code, message, field optional, suggestedFix optional, createdAt.
+Key fields: targetType, targetId, targetVersionId optional, severity, code, message, field optional, suggestedFix optional, resolvedAt optional, createdAt.
 
 ### ApprovalRequest
 
@@ -134,11 +158,18 @@ Append-only record of important user and system actions.
 
 Key fields: schoolId, workspaceId optional, actorId, action, targetType, targetId, metadata, createdAt.
 
+### ExportRequest
+
+Future-ready export request record for PDF, DOCX, print, or preview readiness workflows.
+
+Key fields: schoolId, workspaceId, paperId, templateVersionId, requestedById, format, copyType, status, readinessSummary, storageKey optional, createdAt, updatedAt.
+
 ## Important Relationships
 
 - School has many campuses, workspaces, users through roles, templates, uploads, questions, papers, and audit logs.
 - Workspace has many taxonomy records, questions, papers, uploads, validation results, and comments.
 - Question has many question versions and one or more question sources.
+- ImportBatch has many ImportCandidates; approved candidates may create or link to one Question.
 - Paper has many sections; sections have many paper questions.
 - PaperQuestion references a question and should preserve the selected question version or content snapshot.
 - Template has many template versions; papers reference the template version used.

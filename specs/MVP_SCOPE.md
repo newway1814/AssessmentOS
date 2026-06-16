@@ -8,6 +8,7 @@
 - Question metadata model
 - Upload/import placeholder
 - AI normalization placeholder
+- Import candidate review model before repository approval
 - Draft paper creation
 - Document-style paper editor
 - School template setup
@@ -15,6 +16,7 @@
 - Basic validation rules
 - Answer key placeholder
 - Export placeholder
+- Export request/readiness model before real PDF/DOCX rendering
 
 ## MVP User Roles
 

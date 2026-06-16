@@ -33,11 +33,15 @@ Persistent school, workspace, user, content, paper, template, validation, approv
 
 The data layer must make tenant scoping difficult to forget. Prefer query helpers or repository methods that require school/workspace context for customer-owned records.
 
+PostgreSQL and Prisma are the default database stack. Schema details, migration policy, import candidate handling, export request persistence, and seed expectations are defined in [`DATABASE_SETUP.md`](./DATABASE_SETUP.md).
+
 ### AI Service Abstraction
 
 Provider-agnostic interface for future normalization, extraction, classification, and suggestion workflows. UI components must never hardcode provider-specific logic.
 
 AI responses must be treated as draft, parsed through schemas, linked to source records when applicable, and validated before repository use.
+
+Imported AI-normalized results must be stored as import candidates until a teacher or coordinator approves them into the repository. AI output must not directly create canonical questions.
 
 ### Upload/Storage Abstraction
 

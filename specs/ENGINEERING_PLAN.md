@@ -13,6 +13,7 @@ Build AssessmentOS through small, spec-driven PRs.
 5. Draft paper editor MVP slice.
 6. Template setup and validation improvements.
 7. Import, normalization, answer key, and export placeholders.
+8. Database migration pass for import candidates, export requests, pinned paper question versions, tenant-scoped repository helpers, and richer seed coverage.
 
 ## Tooling Targets
 
@@ -38,6 +39,18 @@ Define provider-agnostic interfaces for:
 - Export/rendering
 - Validation
 - Audit logging
+
+## Database Setup
+
+Use [`DATABASE_SETUP.md`](./DATABASE_SETUP.md) as the operating spec for the next persistence pass.
+
+The next schema pass should:
+
+- Move from prototype `db push` habits toward migration-backed Prisma development.
+- Add import batch/candidate persistence before any real OCR or AI calls.
+- Add export request persistence before real PDF/DOCX rendering.
+- Require tenant-scoped repository helpers for school-owned data.
+- Preserve source and rights metadata at every import and question boundary.
 
 ## Review Strategy
 
