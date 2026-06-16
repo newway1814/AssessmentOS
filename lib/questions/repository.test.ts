@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { defaultQuestionFilters, filterQuestions } from "./repository";
+import { defaultQuestionFilters, filterQuestions } from "./filters";
 import type { QuestionRepositoryItem } from "./types";
 
 const questions: QuestionRepositoryItem[] = [

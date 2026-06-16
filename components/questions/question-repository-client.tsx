@@ -20,11 +20,12 @@ import { questionSourceInputSchema } from "@/lib/domain/schemas";
 import {
   defaultQuestionFilters,
   filterQuestions,
-} from "@/lib/questions/repository";
+} from "@/lib/questions/filters";
 import type {
   QuestionRepositoryFilters,
   QuestionRepositoryFormValues,
   QuestionRepositoryItem,
+  QuestionRepositoryMutations,
 } from "@/lib/questions/types";
 
 type FormMode = "create" | "edit";
@@ -65,8 +66,10 @@ const emptyFormValues: QuestionRepositoryFormValues = {
 };
 
 export function QuestionRepositoryClient({
+  actions,
   initialQuestions,
 }: {
+  actions: QuestionRepositoryMutations;
   initialQuestions: QuestionRepositoryItem[];
 }) {
   const [questions, setQuestions] = useState(initialQuestions);
@@ -113,7 +116,7 @@ export function QuestionRepositoryClient({
     });
   }
 
-  function saveQuestion(values: QuestionRepositoryFormValues) {
+  async function saveQuestion(values: QuestionRepositoryFormValues) {
     setIsSaving(true);
     setError("");
 
@@ -130,58 +133,49 @@ export function QuestionRepositoryClient({
       return;
     }
 
-    if (formState?.mode === "edit" && formState.questionId) {
-      setQuestions((current) =>
-        current.map((question) =>
-          question.id === formState.questionId
-            ? {
-                ...question,
-                ...values,
-                status:
-                  question.status === "ARCHIVED"
-                    ? "ARCHIVED"
-                    : values.answerKey.isComplete
-                      ? "READY"
-                      : "DRAFT",
-                versionNumber: question.versionNumber + 1,
-                updatedAt: new Date().toISOString(),
-              }
-            : question,
-        ),
-      );
-      setSelectedQuestionId(formState.questionId);
-    } else {
-      const nextQuestion: QuestionRepositoryItem = {
-        id: `question-${Date.now()}`,
-        schoolId: "school-riverside",
-        workspaceId: "workspace-academic-coordination",
-        sourceId: `source-${Date.now()}`,
-        ...values,
-        status: values.answerKey.isComplete ? "READY" : "DRAFT",
-        versionNumber: 1,
-        updatedAt: new Date().toISOString(),
-      };
+    try {
+      if (formState?.mode === "edit" && formState.questionId) {
+        const updatedQuestion = await actions.updateQuestion(
+          formState.questionId,
+          values,
+        );
 
-      setQuestions((current) => [nextQuestion, ...current]);
-      setSelectedQuestionId(nextQuestion.id);
+        setQuestions((current) =>
+          current.map((question) =>
+            question.id === updatedQuestion.id ? updatedQuestion : question,
+          ),
+        );
+        setSelectedQuestionId(updatedQuestion.id);
+      } else {
+        const nextQuestion = await actions.createQuestion(values);
+
+        setQuestions((current) => [nextQuestion, ...current]);
+        setSelectedQuestionId(nextQuestion.id);
+      }
+
+      setFormState(null);
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setIsSaving(false);
     }
-
-    setFormState(null);
-    setIsSaving(false);
   }
 
-  function archiveQuestion(questionId: string) {
-    setQuestions((current) =>
-      current.map((question) =>
-        question.id === questionId
-          ? {
-              ...question,
-              status: "ARCHIVED",
-              updatedAt: new Date().toISOString(),
-            }
-          : question,
-      ),
-    );
+  async function archiveQuestion(questionId: string) {
+    setError("");
+
+    try {
+      const archivedQuestion = await actions.archiveQuestion(questionId);
+
+      setQuestions((current) =>
+        current.map((question) =>
+          question.id === archivedQuestion.id ? archivedQuestion : question,
+        ),
+      );
+      setSelectedQuestionId(archivedQuestion.id);
+    } catch (archiveError) {
+      setError(errorMessage(archiveError));
+    }
   }
 
   return (
@@ -226,7 +220,7 @@ export function QuestionRepositoryClient({
                 {filteredQuestions.length} of {questions.length} questions shown
               </p>
             </div>
-            <StatusBadge label="Mocked adapter" tone="neutral" />
+            <StatusBadge label="Persisted SQLite" tone="success" />
           </div>
 
           {questions.length === 0 ? (
@@ -485,7 +479,7 @@ function QuestionInspector({
 }: {
   question?: QuestionRepositoryItem;
   onEdit: (question: QuestionRepositoryItem) => void;
-  onArchive: (questionId: string) => void;
+  onArchive: (questionId: string) => Promise<void>;
 }) {
   if (!question) {
     return (
@@ -554,7 +548,7 @@ function QuestionInspector({
           <div className="mt-2 space-y-2 rounded-md border border-border bg-secondary p-3 text-sm">
             <p className="font-medium">{question.source.title}</p>
             <p className="text-muted-foreground">
-              {formatLabel(question.source.sourceType)} ·{" "}
+              {formatLabel(question.source.sourceType)} |{" "}
               {formatLabel(question.source.rightsStatus)}
             </p>
             <p className="text-muted-foreground">
@@ -596,7 +590,7 @@ function QuestionFormPanel({
   formState: FormState;
   isSaving: boolean;
   onCancel: () => void;
-  onSave: (values: QuestionRepositoryFormValues) => void;
+  onSave: (values: QuestionRepositoryFormValues) => Promise<void>;
 }) {
   const [values, setValues] = useState(formState.values);
 
@@ -632,8 +626,8 @@ function QuestionFormPanel({
           {formState.mode === "create" ? "Create question" : "Edit question"}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          This mocked form uses the same domain boundary schemas planned for the
-          Prisma-backed workflow.
+          This form writes through the Drizzle-backed question repository and
+          keeps source, rights, answer key, and version metadata together.
         </p>
       </div>
       <div className="grid gap-5 p-5 lg:grid-cols-2">
@@ -952,4 +946,10 @@ function rightsTone(
   }
 
   return "warning";
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "The question could not be saved. Please try again.";
 }

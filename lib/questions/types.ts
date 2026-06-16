@@ -70,3 +70,8 @@ export type QuestionRepositoryAdapter = {
   ): Promise<QuestionRepositoryItem>;
   archiveQuestion(id: string): Promise<QuestionRepositoryItem>;
 };
+
+export type QuestionRepositoryMutations = Pick<
+  QuestionRepositoryAdapter,
+  "createQuestion" | "updateQuestion" | "archiveQuestion"
+>;
