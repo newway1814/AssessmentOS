@@ -77,8 +77,15 @@ export type ApprovalStatus =
   | "CHANGES_REQUESTED"
   | "CANCELLED";
 export type ExportFormat = "PDF" | "DOCX" | "PRINT";
-export type ExportStatus = "REQUESTED" | "READY" | "FAILED" | "PLACEHOLDER";
-export type ExportCopyType = "STUDENT" | "TEACHER";
+export type ExportStatus =
+  | "DRAFT"
+  | "READY"
+  | "QUEUED"
+  | "GENERATED_PLACEHOLDER"
+  | "FAILED"
+  | "REQUESTED"
+  | "PLACEHOLDER";
+export type ExportCopyType = "STUDENT" | "TEACHER" | "ASSIGNMENT";
 
 const id = () => text("id").primaryKey();
 const createdAt = () =>
@@ -942,7 +949,7 @@ export const exportRequests = sqliteTable(
     status: text("status")
       .$type<ExportStatus>()
       .notNull()
-      .default("PLACEHOLDER"),
+      .default("GENERATED_PLACEHOLDER"),
     readinessSummary: requiredJson("readiness_summary"),
     storageKey: text("storage_key"),
     createdAt: createdAt(),

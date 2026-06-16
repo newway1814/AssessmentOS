@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildExportPreview,
+  buildExportReadinessSummary,
   countMissingAnswerKeys,
   isExportReady,
 } from "@/lib/exports/helpers";
@@ -28,6 +29,24 @@ describe("export helpers", () => {
     expect(
       preview.checklist.find((item) => item.id === "answer-keys")?.isReady,
     ).toBe(false);
+  });
+
+  it("builds a persistable readiness summary", () => {
+    const preview = buildExportPreview({
+      paper: makePaper([makeQuestion("question-1", true)]),
+      template: makeTemplate(),
+    });
+    const summary = buildExportReadinessSummary({
+      answerKeyVisible: true,
+      checklist: preview.checklist,
+      copyType: "TEACHER",
+      status: "GENERATED_PLACEHOLDER",
+    });
+
+    expect(summary.ready).toBe(true);
+    expect(summary.answerKeyVisible).toBe(true);
+    expect(summary.previewMode).toBe("ASSESSMENT");
+    expect(summary.status).toBe("GENERATED_PLACEHOLDER");
   });
 });
 

@@ -436,10 +436,13 @@ async function seed() {
       requestedById: "user-maya",
       format: "PRINT",
       copyType: "TEACHER",
-      status: "PLACEHOLDER",
+      status: "GENERATED_PLACEHOLDER",
       readinessSummary: {
         ready: false,
         blockers: ["Paper marks are below target."],
+        answerKeyVisible: true,
+        previewMode: "ASSESSMENT",
+        checklist: [],
       },
     })
     .onConflictDoNothing();

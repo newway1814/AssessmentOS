@@ -3,7 +3,9 @@ import type { PaperBuilderItem } from "@/lib/papers/types";
 import { summarizeTemplateReadiness } from "@/lib/templates/helpers";
 import type { SchoolTemplateItem } from "@/lib/templates/types";
 import type {
+  ExportCopyMode,
   ExportReadinessItem,
+  ExportRequestStatus,
   PaperExportPreview,
 } from "@/lib/exports/types";
 
@@ -70,6 +72,31 @@ export function buildExportPreview({
 
 export function isExportReady(checklist: ExportReadinessItem[]) {
   return checklist.every((item) => item.isReady);
+}
+
+export function buildExportReadinessSummary({
+  answerKeyVisible,
+  checklist,
+  copyType,
+  status,
+}: {
+  answerKeyVisible: boolean;
+  checklist: ExportReadinessItem[];
+  copyType: ExportCopyMode;
+  status: ExportRequestStatus;
+}) {
+  const blockers = checklist
+    .filter((item) => !item.isReady)
+    .map((item) => item.label);
+
+  return {
+    ready: isExportReady(checklist),
+    blockers,
+    answerKeyVisible,
+    previewMode: copyType === "ASSIGNMENT" ? "ASSIGNMENT" : "ASSESSMENT",
+    checklist,
+    status,
+  };
 }
 
 export function countMissingAnswerKeys(paper: PaperBuilderItem) {

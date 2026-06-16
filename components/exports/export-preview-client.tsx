@@ -15,22 +15,75 @@ import {
 import { Button } from "@/components/ui/button";
 import type {
   ExportCopyMode,
+  ExportMutations,
   ExportPreviewMode,
-  PaperExportPreview,
+  ExportStatusInput,
+  PersistedPaperExportPreview,
 } from "@/lib/exports/types";
 
 export function ExportPreviewClient({
+  actions,
   preview,
 }: {
-  preview: PaperExportPreview;
+  actions: ExportMutations;
+  preview: PersistedPaperExportPreview;
 }) {
-  const [copyMode, setCopyMode] = useState<ExportCopyMode>("STUDENT");
-  const [previewMode, setPreviewMode] =
-    useState<ExportPreviewMode>("ASSESSMENT");
-  const showAnswerKey = copyMode === "TEACHER";
+  const [currentPreview, setCurrentPreview] = useState(preview);
+  const [copyMode, setCopyMode] = useState<ExportCopyMode>(
+    preview.state.copyType,
+  );
+  const [previewMode, setPreviewMode] = useState<ExportPreviewMode>(
+    preview.state.previewMode,
+  );
+  const [showAnswerKey, setShowAnswerKey] = useState(
+    preview.state.answerKeyVisible,
+  );
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   function printPage() {
     window.print();
+  }
+
+  async function persistPreviewState(nextState: {
+    copyMode: ExportCopyMode;
+    previewMode: ExportPreviewMode;
+    showAnswerKey: boolean;
+  }) {
+    setCopyMode(nextState.copyMode);
+    setPreviewMode(nextState.previewMode);
+    setShowAnswerKey(nextState.showAnswerKey);
+    setIsSaving(true);
+    setError("");
+
+    try {
+      setCurrentPreview(
+        await actions.updatePreviewState(currentPreview.paper.id, {
+          copyType: nextState.copyMode,
+          previewMode: nextState.previewMode,
+          answerKeyVisible: nextState.showAnswerKey,
+        }),
+      );
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function markPlaceholderExport(input: ExportStatusInput) {
+    setIsSaving(true);
+    setError("");
+
+    try {
+      setCurrentPreview(
+        await actions.updateExportStatus(currentPreview.paper.id, input),
+      );
+    } catch (statusError) {
+      setError(errorMessage(statusError));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -48,49 +101,100 @@ export function ExportPreviewClient({
             {preview.paper.title}
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Print-ready preview with mocked export readiness. PDF and DOCX
-            generation are not connected yet.
+            Print-ready preview with persisted export readiness. PDF and DOCX
+            generation remain explicit placeholders.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusBadge label="Persisted SQLite" tone="success" />
+            {currentPreview.state.request ? (
+              <StatusBadge
+                label={formatLabel(currentPreview.state.request.status)}
+                tone={
+                  currentPreview.state.request.status === "FAILED"
+                    ? "warning"
+                    : "neutral"
+                }
+              />
+            ) : (
+              <StatusBadge label="No request yet" tone="neutral" />
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <SegmentedButton
             active={copyMode === "STUDENT"}
-            onClick={() => setCopyMode("STUDENT")}
+            onClick={() =>
+              void persistPreviewState({
+                copyMode: "STUDENT",
+                previewMode: "ASSESSMENT",
+                showAnswerKey: false,
+              })
+            }
           >
             Student copy
           </SegmentedButton>
           <SegmentedButton
             active={copyMode === "TEACHER"}
-            onClick={() => setCopyMode("TEACHER")}
+            onClick={() =>
+              void persistPreviewState({
+                copyMode: "TEACHER",
+                previewMode: "ASSESSMENT",
+                showAnswerKey: true,
+              })
+            }
           >
             Teacher copy
           </SegmentedButton>
           <SegmentedButton
-            active={previewMode === "ASSIGNMENT"}
+            active={copyMode === "ASSIGNMENT"}
             onClick={() =>
-              setPreviewMode((current) =>
-                current === "ASSIGNMENT" ? "ASSESSMENT" : "ASSIGNMENT",
-              )
+              void persistPreviewState({
+                copyMode: "ASSIGNMENT",
+                previewMode: "ASSIGNMENT",
+                showAnswerKey: false,
+              })
             }
           >
             Assignment mode
           </SegmentedButton>
+          <SegmentedButton
+            active={showAnswerKey}
+            onClick={() =>
+              void persistPreviewState({
+                copyMode,
+                previewMode,
+                showAnswerKey: !showAnswerKey,
+              })
+            }
+          >
+            Answer key
+          </SegmentedButton>
         </div>
       </section>
+
+      {error ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="rounded-lg border border-border bg-card p-5 shadow-sm">
           <PrintPreview
-            preview={preview}
+            preview={currentPreview}
             copyMode={copyMode}
             previewMode={previewMode}
             showAnswerKey={showAnswerKey}
           />
         </main>
         <aside className="space-y-5">
-          <ExportActions onPrint={printPage} />
-          <ReadinessPanel preview={preview} />
-          <TemplatePanel preview={preview} />
+          <ExportActions
+            isSaving={isSaving}
+            onMarkPlaceholderExport={markPlaceholderExport}
+            onPrint={printPage}
+          />
+          <ReadinessPanel preview={currentPreview} />
+          <TemplatePanel preview={currentPreview} />
         </aside>
       </div>
     </div>
@@ -103,7 +207,7 @@ function PrintPreview({
   previewMode,
   showAnswerKey,
 }: {
-  preview: PaperExportPreview;
+  preview: PersistedPaperExportPreview;
   copyMode: ExportCopyMode;
   previewMode: ExportPreviewMode;
   showAnswerKey: boolean;
@@ -129,7 +233,12 @@ function PrintPreview({
               minutes | {preview.totalMarks} marks
             </p>
             <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {copyMode === "TEACHER" ? "Teacher copy" : "Student copy"} |{" "}
+              {copyMode === "TEACHER"
+                ? "Teacher copy"
+                : copyMode === "ASSIGNMENT"
+                  ? "Assignment copy"
+                  : "Student copy"}{" "}
+              |{" "}
               {previewMode === "ASSIGNMENT"
                 ? "Assignment mode"
                 : "Assessment mode"}
@@ -251,7 +360,15 @@ function AnswerSpace() {
   );
 }
 
-function ExportActions({ onPrint }: { onPrint: () => void }) {
+function ExportActions({
+  isSaving,
+  onMarkPlaceholderExport,
+  onPrint,
+}: {
+  isSaving: boolean;
+  onMarkPlaceholderExport: (input: ExportStatusInput) => Promise<void>;
+  onPrint: () => void;
+}) {
   return (
     <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
       <h2 className="text-sm font-semibold">Export controls</h2>
@@ -259,13 +376,31 @@ function ExportActions({ onPrint }: { onPrint: () => void }) {
         PDF and DOCX rendering are placeholders. Print uses browser print.
       </p>
       <div className="mt-4 grid gap-2">
-        <Button variant="outline" disabled>
+        <Button
+          variant="outline"
+          onClick={() =>
+            void onMarkPlaceholderExport({
+              format: "PDF",
+              status: "GENERATED_PLACEHOLDER",
+            })
+          }
+          disabled={isSaving}
+        >
           <FileText className="size-4" aria-hidden="true" />
-          Export PDF placeholder
+          {isSaving ? "Recording..." : "Record PDF placeholder"}
         </Button>
-        <Button variant="outline" disabled>
+        <Button
+          variant="outline"
+          onClick={() =>
+            void onMarkPlaceholderExport({
+              format: "DOCX",
+              status: "GENERATED_PLACEHOLDER",
+            })
+          }
+          disabled={isSaving}
+        >
           <FileText className="size-4" aria-hidden="true" />
-          Export DOCX placeholder
+          {isSaving ? "Recording..." : "Record DOCX placeholder"}
         </Button>
         <Button onClick={onPrint}>
           <Printer className="size-4" aria-hidden="true" />
@@ -276,7 +411,7 @@ function ExportActions({ onPrint }: { onPrint: () => void }) {
   );
 }
 
-function ReadinessPanel({ preview }: { preview: PaperExportPreview }) {
+function ReadinessPanel({ preview }: { preview: PersistedPaperExportPreview }) {
   return (
     <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
       <h2 className="text-sm font-semibold">Readiness checklist</h2>
@@ -304,7 +439,7 @@ function ReadinessPanel({ preview }: { preview: PaperExportPreview }) {
   );
 }
 
-function TemplatePanel({ preview }: { preview: PaperExportPreview }) {
+function TemplatePanel({ preview }: { preview: PersistedPaperExportPreview }) {
   return (
     <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
       <h2 className="text-sm font-semibold">Template metadata</h2>
@@ -355,4 +490,40 @@ function SegmentedButton({
       {children}
     </button>
   );
+}
+
+function StatusBadge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "neutral" | "success" | "warning";
+}) {
+  const className = {
+    neutral: "border-border bg-secondary text-muted-foreground",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-700",
+  }[tone];
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium ${className}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function formatLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "The export request could not be saved. Please try again.";
 }

@@ -8,6 +8,13 @@
       "when": 1781589058905,
       "tag": "0000_real_vin_gonzales",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1781599813461,
+      "tag": "0001_gigantic_crusher_hogan",
+      "breakpoints": true
     }
   ]
 }
