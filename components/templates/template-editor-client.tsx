@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, FileUp, Plus, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, FileUp, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { TemplatePreview } from "@/components/templates/template-preview";
@@ -15,6 +15,7 @@ import {
 import type {
   SchoolTemplateFormValues,
   SchoolTemplateItem,
+  SchoolTemplateMutations,
   StudentMetadataField,
   TemplateImportPreview,
   TemplateSectionPattern,
@@ -29,8 +30,10 @@ const metadataFieldOptions: StudentMetadataField[] = [
 ];
 
 export function TemplateEditorClient({
+  actions,
   initialTemplate,
 }: {
+  actions: Pick<SchoolTemplateMutations, "updateTemplate" | "archiveTemplate">;
   initialTemplate: SchoolTemplateItem;
 }) {
   const [template, setTemplate] = useState(initialTemplate);
@@ -39,15 +42,41 @@ export function TemplateEditorClient({
   );
   const [importPreview, setImportPreview] =
     useState<TemplateImportPreview | null>(null);
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const readiness = summarizeTemplateReadiness(template);
 
-  function saveTemplate() {
-    setTemplate((current) => ({
-      ...current,
-      ...draft,
-      versionNumber: current.versionNumber + 1,
-      updatedAt: new Date().toISOString(),
-    }));
+  async function saveTemplate() {
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const updatedTemplate = await actions.updateTemplate(template.id, draft);
+
+      setTemplate(updatedTemplate);
+      setDraft(toFormValues(updatedTemplate));
+    } catch (saveError) {
+      setError(errorMessage(saveError));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function archiveTemplate() {
+    setIsArchiving(true);
+    setError("");
+
+    try {
+      const archivedTemplate = await actions.archiveTemplate(template.id);
+
+      setTemplate(archivedTemplate);
+      setDraft(toFormValues(archivedTemplate));
+    } catch (archiveError) {
+      setError(errorMessage(archiveError));
+    } finally {
+      setIsArchiving(false);
+    }
   }
 
   function updateSection(index: number, nextSection: TemplateSectionPattern) {
@@ -127,9 +156,26 @@ export function TemplateEditorClient({
             }
             tone={readiness.isReady ? "success" : "warning"}
           />
-          <Button onClick={saveTemplate}>Save changes</Button>
+          <StatusBadge label="Persisted SQLite" tone="success" />
+          <Button
+            variant="outline"
+            onClick={() => void archiveTemplate()}
+            disabled={template.status === "ARCHIVED" || isArchiving}
+          >
+            <Archive className="size-4" aria-hidden="true" />
+            {isArchiving ? "Archiving..." : "Archive"}
+          </Button>
+          <Button onClick={() => void saveTemplate()} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save changes"}
+          </Button>
         </div>
       </section>
+
+      {error ? (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
         <main className="space-y-5">
@@ -530,6 +576,10 @@ function statusTone(status: SchoolTemplateItem["status"]) {
     return "success";
   }
 
+  if (status === "DRAFT") {
+    return "warning";
+  }
+
   return "neutral";
 }
 
@@ -564,3 +614,9 @@ const fieldClassName =
 
 const textAreaClassName =
   "min-h-24 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring";
+
+function errorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "The template could not be saved. Please try again.";
+}

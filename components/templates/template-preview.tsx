@@ -21,8 +21,8 @@ export function TemplatePreview({
                 {template.headerText}
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                {template.type.toLowerCase().replace("_", " ")} ·{" "}
-                {template.defaultDurationMinutes} minutes ·{" "}
+                {template.type.toLowerCase().replace("_", " ")} |{" "}
+                {template.defaultDurationMinutes} minutes |{" "}
                 {template.defaultTotalMarks} marks
               </p>
             </div>

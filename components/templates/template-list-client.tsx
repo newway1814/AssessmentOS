@@ -15,6 +15,7 @@ import {
 import type {
   SchoolTemplateFormValues,
   SchoolTemplateItem,
+  SchoolTemplateMutations,
   TemplateImportPreview,
 } from "@/lib/templates/types";
 
@@ -48,37 +49,41 @@ const emptyTemplate: SchoolTemplateFormValues = {
 };
 
 export function TemplateListClient({
+  actions,
   initialTemplates,
 }: {
+  actions: Pick<SchoolTemplateMutations, "createTemplate">;
   initialTemplates: SchoolTemplateItem[];
 }) {
   const [templates, setTemplates] = useState(initialTemplates);
   const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [formValues, setFormValues] = useState(emptyTemplate);
   const [importPreview, setImportPreview] =
     useState<TemplateImportPreview | null>(null);
   const [error, setError] = useState("");
   const selectedTemplate = templates[0];
 
-  function createTemplate() {
+  async function createTemplate() {
     if (!formValues.name.trim()) {
       setError("Template name is required.");
       return;
     }
 
-    const nextTemplate: SchoolTemplateItem = {
-      id: `template-${Date.now()}`,
-      schoolId: "school-riverside",
-      workspaceId: "workspace-academic-coordination",
-      ...formValues,
-      versionNumber: 1,
-      updatedAt: new Date().toISOString(),
-    };
-
-    setTemplates((current) => [nextTemplate, ...current]);
-    setFormValues(emptyTemplate);
-    setIsCreating(false);
+    setIsSaving(true);
     setError("");
+
+    try {
+      const nextTemplate = await actions.createTemplate(formValues);
+
+      setTemplates((current) => [nextTemplate, ...current]);
+      setFormValues(emptyTemplate);
+      setIsCreating(false);
+    } catch (createError) {
+      setError(errorMessage(createError));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -121,6 +126,7 @@ export function TemplateListClient({
             <TemplateCreatePanel
               values={formValues}
               error={error}
+              isSaving={isSaving}
               onChange={setFormValues}
               onCancel={() => setIsCreating(false)}
               onCreate={createTemplate}
@@ -129,10 +135,15 @@ export function TemplateListClient({
 
           <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
             <div className="border-b border-border px-5 py-4">
-              <h2 className="text-sm font-semibold">Templates</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {templates.length} templates in this workspace
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold">Templates</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {templates.length} templates in this workspace
+                  </p>
+                </div>
+                <StatusBadge label="Persisted SQLite" tone="success" />
+              </div>
             </div>
             {templates.length === 0 ? (
               <div className="px-5 py-16 text-center">
@@ -168,7 +179,7 @@ export function TemplateListClient({
                               {template.name}
                             </Link>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              v{template.versionNumber} · {template.schoolName}
+                              v{template.versionNumber} | {template.schoolName}
                             </p>
                           </td>
                           <td className="px-4 py-4">
@@ -184,7 +195,7 @@ export function TemplateListClient({
                             />
                           </td>
                           <td className="px-4 py-4">
-                            {template.defaultDurationMinutes} min ·{" "}
+                            {template.defaultDurationMinutes} min |{" "}
                             {template.defaultTotalMarks} marks
                           </td>
                           <td className="px-4 py-4">
@@ -263,7 +274,7 @@ function ImportPlaceholder({
                   >
                     <p className="font-medium">{section.title}</p>
                     <p className="mt-1 text-muted-foreground">
-                      {section.instructions} · {section.expectedMarks} marks
+                      {section.instructions} | {section.expectedMarks} marks
                     </p>
                   </div>
                 ))}
@@ -286,15 +297,17 @@ function ImportPlaceholder({
 function TemplateCreatePanel({
   values,
   error,
+  isSaving,
   onChange,
   onCancel,
   onCreate,
 }: {
   values: SchoolTemplateFormValues;
   error: string;
+  isSaving: boolean;
   onChange: (values: SchoolTemplateFormValues) => void;
   onCancel: () => void;
-  onCreate: () => void;
+  onCreate: () => Promise<void>;
 }) {
   return (
     <section className="rounded-lg border border-border bg-card shadow-sm">
@@ -375,7 +388,9 @@ function TemplateCreatePanel({
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button onClick={onCreate}>Create template</Button>
+        <Button onClick={() => void onCreate()} disabled={isSaving}>
+          {isSaving ? "Creating..." : "Create template"}
+        </Button>
       </div>
     </section>
   );
@@ -482,6 +497,10 @@ function statusTone(status: SchoolTemplateItem["status"]) {
     return "success";
   }
 
+  if (status === "DRAFT") {
+    return "warning";
+  }
+
   return "neutral";
 }
 
@@ -495,3 +514,9 @@ function formatLabel(value: string) {
 
 const fieldClassName =
   "h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring";
+
+function errorMessage(error: unknown) {
+  return error instanceof Error
+    ? error.message
+    : "The template could not be saved. Please try again.";
+}

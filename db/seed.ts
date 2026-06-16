@@ -246,12 +246,82 @@ async function seed() {
         schoolName: "Riverside International School",
         headerText: "Mid-Term Assessment",
         footerText: "Prepared for internal school use.",
-        studentMetadataFields: ["Name", "Roll Number", "Class", "Date"],
+        examInstructions:
+          "Write all answers in the spaces provided. Show working for calculation questions.",
+        studentMetadataFields: ["Name", "Roll number", "Class", "Date"],
         defaultDurationMinutes: 60,
         defaultTotalMarks: 40,
-        sectionPattern: "Two sections with increasing difficulty.",
+        sectionPattern: [
+          {
+            title: "Section A",
+            instructions: "Answer all short-answer questions.",
+            expectedMarks: 20,
+          },
+          {
+            title: "Section B",
+            instructions: "Show working for long-answer questions.",
+            expectedMarks: 20,
+          },
+        ],
+        pageRuleNotes:
+          "A4 layout, school header on first page, page numbers in footer.",
       },
       changeReason: "Initial approved school exam template.",
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(templates)
+    .values({
+      id: "template-riverside-standard-exam",
+      schoolId: "school-riverside",
+      workspaceId: "workspace-academic-coordination",
+      createdById: "user-arjun",
+      name: "Riverside Standard Exam Paper",
+      type: "EXAM",
+      status: "ACTIVE",
+    })
+    .onConflictDoNothing();
+
+  await db
+    .insert(templateVersions)
+    .values({
+      id: "template-version-riverside-standard-exam-v1",
+      templateId: "template-riverside-standard-exam",
+      versionNumber: 1,
+      structure: {
+        schoolName: "Riverside International School",
+        logoUrl: "",
+        headerText: "End of Term Assessment",
+        footerText:
+          "This paper is confidential and intended for internal school use.",
+        examInstructions:
+          "Write all answers in the spaces provided. Show working for calculation questions.",
+        studentMetadataFields: [
+          "Name",
+          "Roll number",
+          "Class",
+          "Section",
+          "Date",
+        ],
+        defaultDurationMinutes: 90,
+        defaultTotalMarks: 50,
+        sectionPattern: [
+          {
+            title: "Section A",
+            instructions: "Answer all short-answer questions.",
+            expectedMarks: 20,
+          },
+          {
+            title: "Section B",
+            instructions: "Answer any three long-answer questions.",
+            expectedMarks: 30,
+          },
+        ],
+        pageRuleNotes:
+          "A4 layout, school header on first page, page numbers in footer, answer spaces kept with questions.",
+      },
+      changeReason: "Initial approved standard exam template.",
     })
     .onConflictDoNothing();
 

@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { TemplateEditorClient } from "@/components/templates/template-editor-client";
 import { templateRepository } from "@/lib/templates/repository";
 
+import { archiveTemplateAction, updateTemplateAction } from "../actions";
+
+export const dynamic = "force-dynamic";
+
 export default async function TemplateEditorPage({
   params,
 }: {
@@ -15,5 +19,13 @@ export default async function TemplateEditorPage({
     notFound();
   }
 
-  return <TemplateEditorClient initialTemplate={template} />;
+  return (
+    <TemplateEditorClient
+      initialTemplate={template}
+      actions={{
+        updateTemplate: updateTemplateAction,
+        archiveTemplate: archiveTemplateAction,
+      }}
+    />
+  );
 }

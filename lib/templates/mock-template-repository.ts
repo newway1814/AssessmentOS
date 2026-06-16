@@ -118,6 +118,30 @@ export const mockTemplateRepository: SchoolTemplateAdapter = {
     return updatedTemplate;
   },
 
+  async archiveTemplate(id) {
+    let archivedTemplate: SchoolTemplateItem | undefined;
+
+    templates = templates.map((template) => {
+      if (template.id !== id) {
+        return template;
+      }
+
+      archivedTemplate = {
+        ...template,
+        status: "ARCHIVED",
+        updatedAt: new Date().toISOString(),
+      };
+
+      return archivedTemplate;
+    });
+
+    if (!archivedTemplate) {
+      throw new Error(`Template ${id} was not found.`);
+    }
+
+    return archivedTemplate;
+  },
+
   async mockImportPreview(filename) {
     return createMockImportPreview(filename);
   },

@@ -1,10 +1,11 @@
-import { mockTemplateRepository } from "@/lib/templates/mock-template-repository";
+import { drizzleTemplateRepository } from "@/lib/templates/drizzle-template-repository";
 import type {
   SchoolTemplateAdapter,
   SchoolTemplateItem,
 } from "@/lib/templates/types";
 
-export const templateRepository: SchoolTemplateAdapter = mockTemplateRepository;
+export const templateRepository: SchoolTemplateAdapter =
+  drizzleTemplateRepository;
 
 export function sortTemplatesByUpdatedAt(templates: SchoolTemplateItem[]) {
   return [...templates].sort(

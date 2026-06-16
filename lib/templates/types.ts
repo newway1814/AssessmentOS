@@ -55,5 +55,11 @@ export type SchoolTemplateAdapter = {
     id: string,
     input: SchoolTemplateFormValues,
   ): Promise<SchoolTemplateItem>;
+  archiveTemplate(id: string): Promise<SchoolTemplateItem>;
   mockImportPreview(filename: string): Promise<TemplateImportPreview>;
 };
+
+export type SchoolTemplateMutations = Pick<
+  SchoolTemplateAdapter,
+  "createTemplate" | "updateTemplate" | "archiveTemplate"
+>;
